@@ -8,7 +8,7 @@ from urllib.parse import urlparse, parse_qs
 
 BASE = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(BASE, 'scripts')
-TOKEN = secrets.token_urlsafe(16)
+TOKEN = os.environ.get('CHATREL_TOKEN') or secrets.token_urlsafe(16)   # CHATREL_TOKEN 僅供自動化測試
 WORK = tempfile.mkdtemp(prefix='chatrel_')
 LOCK = threading.Lock()
 
@@ -77,67 +77,50 @@ def pipeline(p):
     return {'stats': stats, 'score': score, 'forecast': fc, 'images': imgs, 'notes': notes}
 
 
-PAGE = r"""<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>聊天關係報告</title><style>
-:root{--bg:#f7f7f5;--card:#fff;--ink:#1f2328;--mute:#6b7280;--line:#e5e7eb;--blue:#2a6fdb;--warn:#b45309}
-@media(prefers-color-scheme:dark){:root{--bg:#16181c;--card:#1f2228;--ink:#e6e8eb;--mute:#9aa3ad;--line:#2d313a;--blue:#6aa0ff;--warn:#f0b35a}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,"PingFang TC","Microsoft JhengHei",sans-serif}
-main{max-width:980px;margin:0 auto;padding:24px 16px 60px}h1{font-size:22px;margin:0 0 4px}.sub{color:var(--mute);margin-bottom:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
-h2{font-size:16px;margin:0 0 10px}label{display:block;font-size:13px;color:var(--mute);margin:8px 0 3px}
-input[type=text],input[type=date]{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink)}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
-button{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:15px;cursor:pointer}button:disabled{opacity:.5}
-button.ghost{background:transparent;color:var(--blue);border:1px solid var(--blue)}
-.drop{border:2px dashed var(--line);border-radius:12px;padding:26px;text-align:center;color:var(--mute);cursor:pointer}.drop.on{border-color:var(--blue)}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-.kpi b{display:block;font-size:26px;color:var(--blue)}.kpi span{color:var(--mute);font-size:13px}
-.bar{height:10px;border-radius:5px;background:var(--line);position:relative;margin:3px 0 9px}.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--blue)}
-.bar em{position:absolute;top:-2px;bottom:-2px;border-radius:3px;background:rgba(232,89,12,.35)}
-.warn{color:var(--warn);margin:4px 0}.small{font-size:13px;color:var(--mute)}
-.imgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}.imgs img{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff}
-table{width:100%;border-collapse:collapse}td,th{padding:6px 4px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
-</style></head><body><main>
-<h1>聊天關係報告</h1><div class="sub">資料只在你的電腦上處理，不會上傳。支援 LINE .txt、Instagram .json（可多選、可兩平台合併）。</div>
-<div class="card"><h2>1. 選擇聊天記錄</h2>
-<div class="drop" id="drop">把檔案拖到這裡，或點此選擇<br><span class="small">LINE：.txt　IG：message_1.json…</span><input id="file" type="file" multiple hidden></div>
-<div id="flist" class="small" style="margin-top:8px"></div></div>
-<div class="card"><h2>2. 設定（可略過）</h2><div class="row">
-<div><label>你的名字（--me）</label><input type="text" id="me" placeholder="與聊天室顯示的名字相同"></div>
-<div><label>排除機器人／系統帳號（逗號分隔）</label><input type="text" id="exclude" placeholder="例：LINE官方帳號,活動機器人"></div>
-<div><label>合併名字（IG名=LINE名，逗號分隔）</label><input type="text" id="alias"></div>
-<div><label>只分析從</label><input type="date" id="since"></div><div><label>到（不含）</label><input type="date" id="until"></div>
-<div><label>時區（小時，台灣 8）</label><input type="text" id="tz" value="8"></div></div></div>
-<button id="go" disabled>開始分析</button> <span id="status" class="small"></span>
-<div id="result" style="margin-top:18px"></div>
-</main><script>
-const T=new URLSearchParams(location.search).get('t');const $=id=>document.getElementById(id);let uploaded=[];
-const api=(p,o)=>fetch(p+(p.includes('?')?'&':'?')+'t='+T,o);
-$('drop').onclick=()=>$('file').click();
-['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.add('on')}));
-['dragleave','drop'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.remove('on')}));
-$('drop').addEventListener('drop',ev=>send(ev.dataTransfer.files));$('file').onchange=ev=>send(ev.target.files);
-async function send(fs){await api('/reset',{method:'POST'});uploaded=[];$('flist').textContent='上傳中…';
- for(const f of fs){const r=await api('/upload?name='+encodeURIComponent(f.name),{method:'POST',body:await f.arrayBuffer()});if(r.ok)uploaded.push(f.name)}
- $('flist').textContent=uploaded.length?'已選：'+uploaded.join('、'):'';$('go').disabled=!uploaded.length}
-const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-$('go').onclick=async()=>{$('go').disabled=true;$('status').textContent='分析中…（大型聊天可能要一分鐘）';$('result').innerHTML='';
- const body={};['me','exclude','alias','since','until','tz'].forEach(k=>body[k]=$(k).value.trim());
- const r=await api('/run',{method:'POST',body:JSON.stringify(body)});const d=await r.json();$('go').disabled=false;$('status').textContent='';render(d)};
-function render(d){const R=$('result');if(d.error){R.innerHTML='<div class="card warn">'+esc(d.error)+'</div>';return}
- const s=d.score,st=d.stats,f=d.forecast;let h='';
- h+='<div class="card"><h2>結論</h2><div class="kpis"><div class="kpi"><b>'+s.closeness+'</b><span>親密度 /100</span></div><div class="kpi"><b>'+s.romantic_signal+'</b><span>浪漫訊號 /100</span></div><div class="kpi"><b>'+esc(s.trend)+'</b><span>趨勢</span></div><div class="kpi"><b>'+esc(s.confidence)+'</b><span>信心</span></div><div class="kpi"><b>'+st.total+'</b><span>訊息數</span></div></div>';
- h+='<p style="margin:12px 0 4px"><b>區間：</b>'+esc(s.band)+'</p><div class="small">'+Object.entries(st.people).map(([k,v])=>esc(k)+' '+v+' 則').join('　')+'</div></div>';
- const W=[].concat(s.warnings||[],d.notes||[]);if(W.length)h+='<div class="card"><h2>⚠ 健檢警告（請先看）</h2>'+W.map(w=>'<div class="warn">'+esc(w)+'</div>').join('')+'</div>';
- if(s.dimensions){h+='<div class="card"><h2>五維度</h2>'+Object.entries(s.dimensions).map(([k,v])=>'<div>'+esc(k)+' <b>'+v+'</b></div><div class="bar"><i style="width:'+v+'%"></i></div>').join('')+'</div>'}
- if(f){const sc=f.scenarios;const ks=Object.keys(sc).sort((a,b)=>sc[b].point-sc[a].point);
-  h+='<div class="card"><h2>未來 8 週關係落點（相對可能性・啟發式・未校準）</h2><table>'+ks.map(k=>'<tr><td style="width:34%">'+esc(k)+(k===f.current_band_scenario?' <span class="small">（目前）</span>':'')+'</td><td><div class="bar" style="margin:0"><i style="width:'+sc[k].point+'%"></i><em style="left:'+sc[k].p10+'%;width:'+Math.max(1,sc[k].p90-sc[k].p10)+'%"></em></div></td><td style="width:120px"><b>'+sc[k].point+'%</b> <span class="small">('+sc[k].p10+'–'+sc[k].p90+')</span></td></tr>').join('')+'</table>';
-  h+='<p class="small">'+esc(f.scenario_note)+'</p><p class="small">淡出風險（4 週）：'+Math.round(f.fade_risk_4wk*100)+'%；訊息量近期斜率 '+f.trend_slope_pct_per_week+'%/週。</p></div>';
-  if(f.rule_advice&&f.rule_advice.length)h+='<div class="card"><h2>目前建議（依資料）</h2><ul>'+f.rule_advice.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul><div class="small">建議僅描述行為，不代表對方的想法，也不替你做決定。</div></div>'}
- if(d.images.length)h+='<div class="card"><h2>圖表</h2><div class="imgs">'+d.images.map(i=>'<img src="/img/'+i+'?t='+T+'">').join('')+'</div></div>';
- h+='<div class="card"><button class="ghost" onclick="location.href=\'/download.zip?t='+T+'\'">下載全部結果（zip）</button> <span class="small">內含 stats / score / forecast JSON、逐則明細 CSV、所有圖表。想要敘事報告，可把 scorecard 或 score.json 貼給 Claude。</span></div>';
- h+='<div class="small">限制：只看文字；門檻為經驗設定、未用大樣本校準；機率為啟發式分數，不是真實機率；電話與見面看不到，分數是下限估計。</div>';R.innerHTML=h}
-</script></body></html>"""
+def page():
+    return open(os.path.join(BASE, 'web', 'index.html'), 'rb').read()
+
+
+LAST_PING = [0.0]
+
+
+def find_app_browser():
+    """找 Edge / Chrome，用 --app 模式開成像獨立 App 的視窗；找不到就用預設瀏覽器。"""
+    c = []
+    if sys.platform.startswith('win'):
+        for env in ('PROGRAMFILES', 'PROGRAMFILES(X86)', 'LOCALAPPDATA'):
+            r = os.environ.get(env)
+            if r:
+                c += [os.path.join(r, 'Microsoft', 'Edge', 'Application', 'msedge.exe'), os.path.join(r, 'Google', 'Chrome', 'Application', 'chrome.exe')]
+    elif sys.platform == 'darwin':
+        c = ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+             '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser']
+    else:
+        c = [shutil.which(x) or '' for x in ('microsoft-edge', 'google-chrome', 'chromium', 'chromium-browser')]
+    return next((x for x in c if x and os.path.exists(x)), None)
+
+
+def open_window(url):
+    exe = find_app_browser()
+    if exe:
+        try:
+            import subprocess
+            prof = os.path.join(WORK, 'browser_profile'); os.makedirs(prof, exist_ok=True)
+            subprocess.Popen([exe, f'--app={url}', '--window-size=1200,820', f'--user-data-dir={prof}', '--no-first-run', '--no-default-browser-check'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except Exception:
+            pass
+    webbrowser.open(url)
+
+
+def watchdog():
+    """視窗關閉後（約 2 分鐘沒有心跳）自動結束，避免背景殘留。"""
+    import time
+    while True:
+        time.sleep(5)
+        if LAST_PING[0] and time.time() - LAST_PING[0] > 120:
+            shutil.rmtree(WORK, ignore_errors=True); os._exit(0)
 
 
 class H(BaseHTTPRequestHandler):
@@ -148,6 +131,7 @@ class H(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(body)
 
     def _auth(self):
+        if self.path.startswith('/favicon'): self._ok(204, 'image/x-icon', b''); return None
         q = parse_qs(urlparse(self.path).query)
         if q.get('t', [''])[0] != TOKEN: self._ok(403, 'text/plain', b'forbidden'); return None
         return q
@@ -155,7 +139,9 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path); q = self._auth()
         if q is None: return
-        if u.path == '/': return self._ok(200, 'text/html; charset=utf-8', PAGE.encode())
+        if u.path == '/ping':
+            import time; LAST_PING[0] = time.time(); return self._ok(body=b'{}')
+        if u.path == '/': return self._ok(200, 'text/html; charset=utf-8', page())
         if u.path.startswith('/img/'):
             f = os.path.join(WORK, 'out', 'charts', os.path.basename(u.path))
             if os.path.isfile(f): return self._ok(200, 'image/png', open(f, 'rb').read())
@@ -174,6 +160,8 @@ class H(BaseHTTPRequestHandler):
         if q is None: return
         n = int(self.headers.get('Content-Length') or 0); body = self.rfile.read(n) if n else b''
         up = os.path.join(WORK, 'uploads')
+        if u.path == '/quit':
+            self._ok(body=b'{}'); shutil.rmtree(WORK, ignore_errors=True); threading.Timer(0.3, lambda: os._exit(0)).start(); return
         if u.path == '/reset':
             shutil.rmtree(up, ignore_errors=True); os.makedirs(up); return self._ok(body=b'{}')
         if u.path == '/upload':
@@ -194,7 +182,8 @@ def main():
     srv = ThreadingHTTPServer(('127.0.0.1', int(os.environ.get('PORT', 0))), H)
     url = f'http://127.0.0.1:{srv.server_address[1]}/?t={TOKEN}'
     print('聊天關係報告已啟動：', url, '\n（關閉此視窗即結束；資料只存在本機暫存資料夾）', flush=True)
-    if not os.environ.get('NO_BROWSER'): threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    if not os.environ.get('NO_BROWSER'): threading.Timer(0.6, lambda: open_window(url)).start()
+    threading.Thread(target=watchdog, daemon=True).start()
     try: srv.serve_forever()
     except KeyboardInterrupt: pass
     finally: shutil.rmtree(WORK, ignore_errors=True)

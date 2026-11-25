@@ -11,3 +11,6 @@ messages.csv
 stats.json
 score.json
 forecast.json
+installer/
+dmgroot/
+*.dmg

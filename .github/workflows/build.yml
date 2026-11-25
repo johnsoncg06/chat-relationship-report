@@ -1,41 +1,74 @@
-name: build-desktop-app
+name: build-installers
+# 打 tag（例如 v0.1.0）會自動打包並發佈到 Releases；也可在 Actions 頁手動執行。
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
+permissions:
+  contents: write
+env:
+  PYI_COMMON: >-
+    --noconfirm --windowed --name ChatRelationshipReport --icon assets/icon.png
+    --hidden-import pandas --hidden-import numpy --hidden-import scipy.stats
+    --hidden-import matplotlib.backends.backend_agg --collect-data matplotlib
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: windows-latest, name: ChatRelationshipReport-windows, sep: ';' }
-          - { os: macos-latest,   name: ChatRelationshipReport-macos,   sep: ':' }
-          - { os: ubuntu-latest,  name: ChatRelationshipReport-linux,   sep: ':' }
-    runs-on: ${{ matrix.os }}
+  windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install -r requirements.txt pyinstaller
-      - name: Build
+      - run: pip install -r requirements.txt pyinstaller pillow
+      - name: PyInstaller (onedir)
+        shell: bash
+        run: pyinstaller $PYI_COMMON --onedir --add-data "scripts;scripts" --add-data "web;web" app.py
+      - name: Smoke test
         shell: bash
         run: |
-          pyinstaller --noconfirm --onefile --name "${{ matrix.name }}" \
-            --add-data "scripts${{ matrix.sep }}scripts" \
-            --hidden-import pandas --hidden-import numpy --hidden-import scipy.stats \
-            --hidden-import matplotlib.backends.backend_agg --collect-data matplotlib \
-            app.py
-      - name: Smoke test (啟動後能回應)
+          CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe &
+          sleep 20
+          curl -sf "http://127.0.0.1:8799/?t=smoke" | grep -q "聊天關係報告"
+      - name: Inno Setup installer
         shell: bash
         run: |
-          NO_BROWSER=1 PORT=8799 ./dist/${{ matrix.name }}* > smoke.log 2>&1 &
-          sleep 15; cat smoke.log
-          T=$(grep -o 't=[A-Za-z0-9_-]*' smoke.log | head -1 | cut -c3-)
-          curl -sf "http://127.0.0.1:8799/?t=$T" > /dev/null
+          choco install innosetup -y --no-progress
+          VER="${GITHUB_REF_NAME#v}"; [[ "$GITHUB_REF_TYPE" == "tag" ]] || VER="0.0.0-dev"
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "//DAppVersion=$VER" installer.iss
       - uses: actions/upload-artifact@v4
-        with: { name: "${{ matrix.name }}", path: dist/* }
+        with: { name: windows-installer, path: installer/*.exe }
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
-        with: { files: dist/* }
+        with: { files: installer/*.exe }
+
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-latest,      arch: arm64 }   # Apple Silicon（M1 以後）
+          - { runner: macos-15-intel,    arch: intel }   # Intel Mac
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.arch == 'intel' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt pyinstaller pillow
+      - name: PyInstaller (.app)
+        run: pyinstaller $PYI_COMMON --onedir --osx-bundle-identifier io.github.johnsoncg06.chatrelationshipreport --add-data "scripts:scripts" --add-data "web:web" app.py
+      - name: Smoke test
+        run: |
+          CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport &
+          sleep 20
+          curl -sf "http://127.0.0.1:8799/?t=smoke" | grep -q "聊天關係報告"
+      - name: Build .dmg
+        run: |
+          mkdir dmgroot && cp -R dist/ChatRelationshipReport.app dmgroot/ && ln -s /Applications dmgroot/Applications
+          hdiutil create -volname "Chat Relationship Report" -srcfolder dmgroot -ov -format UDZO "ChatRelationshipReport-macOS-${{ matrix.arch }}.dmg"
+      - uses: actions/upload-artifact@v4
+        with: { name: "macos-dmg-${{ matrix.arch }}", path: "*.dmg" }
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with: { files: "*.dmg" }

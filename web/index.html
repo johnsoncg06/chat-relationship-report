@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>聊天關係報告</title>
+<style>
+:root{--base:#121212;--side:#000;--panel:#181818;--raise:#242424;--hover:#2a2a2a;--line:#2e2e2e;--ink:#fff;--mute:#b3b3b3;--dim:#7a7a7a;--g:#1ed760;--g2:#1db954;--warn:#f5a623;--bad:#f15e6c}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--base);color:var(--ink);font:14px/1.55 "Helvetica Neue",Helvetica,Arial,"PingFang TC","Microsoft JhengHei","Noto Sans CJK TC",sans-serif;display:flex;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+/* 側邊欄 */
+aside{width:236px;flex:none;background:var(--side);padding:20px 12px;display:flex;flex-direction:column;gap:6px;margin:8px 0 8px 8px;border-radius:10px}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 12px 18px;font-weight:800;font-size:17px;letter-spacing:-.2px}
+.brand svg{width:30px;height:30px;flex:none}
+nav{display:flex;flex-direction:column;gap:2px}
+nav button{display:flex;align-items:center;gap:14px;padding:10px 12px;border-radius:6px;color:var(--mute);font-weight:700;text-align:left}
+nav button:hover:not(:disabled){color:var(--ink)}nav button.on{color:var(--ink);background:var(--raise)}
+nav button:disabled{opacity:.35;cursor:default}nav svg{width:22px;height:22px;flex:none;fill:currentColor}
+.sp{flex:1}.quit{color:var(--dim);font-weight:700;padding:10px 12px;text-align:left;border-radius:6px;display:flex;gap:14px;align-items:center}.quit:hover{color:var(--ink)}
+.priv{font-size:12px;color:var(--dim);padding:0 12px 10px}
+/* 主區 */
+main{flex:1;margin:8px;border-radius:10px;background:var(--panel);overflow-y:auto;position:relative;scroll-behavior:smooth}
+.view{display:none}.view.on{display:block}
+.hero{padding:56px 32px 28px;background:linear-gradient(180deg,#1f6b43 0%,#16402b 55%,var(--panel) 100%);display:flex;gap:26px;align-items:flex-end}
+.hero.plain{background:linear-gradient(180deg,#2c2c2c,var(--panel))}
+.cover{width:176px;height:176px;border-radius:6px;flex:none;background:linear-gradient(135deg,#1ed760,#0e5132);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.cover b{font-size:68px;line-height:1;letter-spacing:-3px;color:#04200f}.cover span{font-size:13px;font-weight:700;color:#04200f;opacity:.75;margin-top:4px}
+.hero h1{margin:6px 0 10px;font-size:clamp(30px,5vw,60px);line-height:1.05;letter-spacing:-1.5px;font-weight:900}
+.hero .meta{color:#e5e5e5;font-size:14px}.hero .meta b{color:#fff}
+.body{padding:20px 32px 56px;max-width:1040px}
+h2{font-size:22px;letter-spacing:-.4px;margin:30px 0 14px;font-weight:800}
+.sub{color:var(--mute);margin:-6px 0 14px}
+.play{display:flex;gap:14px;align-items:center;margin:4px 0 0}
+.go{background:var(--g);color:#000;font-weight:800;padding:14px 34px;border-radius:500px;font-size:15px;transition:transform .12s,background .12s}
+.go:hover:not(:disabled){transform:scale(1.04);background:#3be477}.go:disabled{background:#3a3a3a;color:#777}
+.ghost{border:1px solid #727272;border-radius:500px;padding:11px 24px;font-weight:700}.ghost:hover{border-color:#fff;transform:scale(1.03)}
+.status{color:var(--mute)}
+/* 匯入 */
+.drop{border:2px dashed #3a3a3a;border-radius:12px;padding:44px 20px;text-align:center;color:var(--mute);cursor:pointer;background:#141414;transition:.15s}
+.drop:hover,.drop.on{border-color:var(--g);color:#fff;background:#14201a}
+.drop b{display:block;color:#fff;font-size:18px;margin-bottom:6px}
+.files{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.chip{background:var(--raise);border-radius:500px;padding:5px 14px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label{display:block;color:var(--mute);font-size:13px;font-weight:700;margin-bottom:6px}
+input{width:100%;background:var(--raise);border:1px solid transparent;border-radius:6px;padding:11px 12px;color:#fff;font:inherit}
+input:hover{border-color:#444}input:focus{outline:none;border-color:var(--g)}input::placeholder{color:#6a6a6a}input[type=date]{color-scheme:dark}
+/* 卡片 */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.card{background:var(--raise);border-radius:8px;padding:18px;transition:background .15s}.card:hover{background:var(--hover)}
+.card b{display:block;font-size:30px;letter-spacing:-1px;line-height:1.1}.card span{color:var(--mute);font-size:13px}
+.alert{background:#2b2210;border-left:4px solid var(--warn);border-radius:6px;padding:12px 16px;margin:8px 0;color:#ffe2a8}
+.alert.bad{background:#2b1418;border-color:var(--bad);color:#ffc4ca}
+.alert h3{margin:0 0 4px;font-size:14px;color:#fff}
+/* 排行表 */
+table{width:100%;border-collapse:collapse}
+th{color:var(--mute);font-weight:600;font-size:13px;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+td{padding:11px 12px;border-radius:0}tr.row:hover td{background:var(--hover)}tr.row td:first-child{border-radius:6px 0 0 6px;color:var(--mute);width:44px}tr.row td:last-child{border-radius:0 6px 6px 0}
+tr.top td:nth-child(2){color:var(--g);font-weight:800}
+.track{height:6px;background:#3a3a3a;border-radius:3px;position:relative;min-width:120px}.track i{position:absolute;inset:0 auto 0 0;background:var(--g);border-radius:3px}.track em{position:absolute;top:-3px;bottom:-3px;border-radius:2px;background:rgba(255,255,255,.28)}
+tr.row:hover .track i{background:#3be477}
+.pct{font-weight:800;white-space:nowrap}.pct small{color:var(--dim);font-weight:400}
+.cur{color:var(--dim);font-weight:400;font-size:12px;margin-left:6px}
+/* 維度 */
+.dim{display:grid;grid-template-columns:70px 1fr 40px;gap:12px;align-items:center;margin:11px 0}.dim .track{height:8px}.dim b{text-align:right}
+.note{color:var(--dim);font-size:12.5px;margin-top:12px}
+ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);border-radius:8px;padding:14px 16px;margin-bottom:8px}
+.imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.imgs figure{margin:0;background:#fff;border-radius:8px;overflow:hidden;transition:transform .15s}.imgs figure:hover{transform:translateY(-3px)}.imgs img{width:100%;display:block;cursor:zoom-in}
+.empty{text-align:center;color:var(--mute);padding:70px 20px}.empty b{display:block;color:#fff;font-size:20px;margin-bottom:6px}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:9;padding:24px}.lb.on{display:flex}.lb img{max-width:100%;max-height:100%;border-radius:8px;background:#fff}
+.spin{width:16px;height:16px;border:2px solid #444;border-top-color:var(--g);border-radius:50%;display:inline-block;vertical-align:-3px;margin-right:8px;animation:r 0.8s linear infinite}@keyframes r{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(max-width:760px){body{flex-direction:column-reverse}aside{width:auto;flex-direction:row;margin:0 8px 8px;padding:6px;border-radius:10px;overflow-x:auto}.brand,.priv,.sp,.quit span{display:none}nav{flex-direction:row}nav button span{display:none}.hero{flex-direction:column;align-items:flex-start;padding:28px 20px 20px}.body{padding:16px 20px 40px}}
+</style></head>
+<body>
+<aside>
+ <div class="brand"><svg viewBox="0 0 32 32"><circle cx="16" cy="15" r="13" fill="#1ed760"/><path d="M7 25l1-6 6 3z" fill="#1ed760"/><g fill="#000"><rect x="9" y="12" width="2.6" height="7" rx="1.3"/><rect x="13" y="9" width="2.6" height="12" rx="1.3"/><rect x="17" y="7" width="2.6" height="16" rx="1.3"/><rect x="21" y="10" width="2.6" height="10" rx="1.3"/></g></svg>聊天關係報告</div>
+ <nav id="nav">
+  <button data-v="start" class="on"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg><span>開始分析</span></button>
+  <button data-v="over" disabled><svg viewBox="0 0 24 24"><path d="M4 13h4v7H4zm6-9h4v16h-4zm6 5h4v11h-4z"/></svg><span>總覽</span></button>
+  <button data-v="fore" disabled><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8v4h2V4h-7v2h4l-7 7-4-4-8 8z"/></svg><span>未來預測</span></button>
+  <button data-v="chart" disabled><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg><span>圖表</span></button>
+  <button data-v="exp" disabled><svg viewBox="0 0 24 24"><path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 3.6 3.6V3zM5 18h14v3H5z"/></svg><span>匯出</span></button>
+ </nav>
+ <div class="sp"></div>
+ <div class="priv">資料只在這台電腦處理，不會上傳。</div>
+ <button class="quit" id="quit"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3h-2v10h2zm4.8 2.2l-1.4 1.4A7 7 0 1 1 7.6 6.6L6.2 5.2A9 9 0 1 0 17.8 5.2z"/></svg><span>結束程式</span></button>
+</aside>
+<main id="main">
+ <section class="view on" id="v-start">
+  <div class="hero plain"><div><h1>看懂你們的聊天</h1><div class="meta">匯入 LINE 或 Instagram 的聊天記錄，算出親密度、關係區間和未來 8 週的走向。</div></div></div>
+  <div class="body">
+   <h2>匯入聊天記錄</h2>
+   <div class="drop" id="drop"><b>拖曳檔案到這裡，或點擊選擇</b>LINE：.txt　Instagram：message_1.json 等（可多選，兩個平台可合併）<input id="file" type="file" multiple hidden></div>
+   <div class="files" id="flist"></div>
+   <h2>設定（可略過）</h2>
+   <div class="grid">
+    <div><label for="me">你的名字</label><input id="me" placeholder="與聊天室顯示的名字相同"></div>
+    <div><label for="exclude">排除機器人或系統帳號</label><input id="exclude" placeholder="多個用逗號分開"></div>
+    <div><label for="alias">合併兩個平台的名字</label><input id="alias" placeholder="IG名=LINE名"></div>
+    <div><label for="since">只分析從</label><input type="date" id="since"></div>
+    <div><label for="until">到（不含當天）</label><input type="date" id="until"></div>
+    <div><label for="tz">時區（台灣是 8）</label><input id="tz" value="8"></div>
+   </div>
+   <div class="play" style="margin-top:28px"><button class="go" id="go" disabled>開始分析</button><span class="status" id="status"></span></div>
+   <p class="note">只看文字內容；電話和見面看不到，分數是下限估計。本工具不做診斷，只描述聊天裡看得到的行為。</p>
+  </div>
+ </section>
+ <section class="view" id="v-over"></section>
+ <section class="view" id="v-fore"></section>
+ <section class="view" id="v-chart"></section>
+ <section class="view" id="v-exp"></section>
+</main>
+<div class="lb" id="lb"><img id="lbimg" alt=""></div>
+<script>
+const T=new URLSearchParams(location.search).get('t'),$=id=>document.getElementById(id);let uploaded=[],has=false;
+const api=(p,o)=>fetch(p+(p.includes('?')?'&':'?')+'t='+T,o);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+setInterval(()=>api('/ping').catch(()=>{}),4000);api('/ping');
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
+ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('main').scrollTop=0}
+$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled)show(b.dataset.v)};
+$('quit').onclick=async()=>{if(confirm('結束程式？分析結果會一併清除。')){await api('/quit',{method:'POST'}).catch(()=>{});document.body.innerHTML='<div class="empty" style="width:100%"><b>已結束</b>可以關閉這個視窗。</div>'}};
+$('drop').onclick=()=>$('file').click();
+['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.add('on')}));
+['dragleave','drop'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.remove('on')}));
+$('drop').addEventListener('drop',ev=>send(ev.dataTransfer.files));$('file').onchange=ev=>send(ev.target.files);
+async function send(fs){await api('/reset',{method:'POST'});uploaded=[];$('flist').innerHTML='<span class="status"><span class="spin"></span>讀取中…</span>';
+ for(const f of fs){const r=await api('/upload?name='+encodeURIComponent(f.name),{method:'POST',body:await f.arrayBuffer()});if(r.ok)uploaded.push(f.name)}
+ $('flist').innerHTML=uploaded.map(n=>'<span class="chip">'+esc(n)+'</span>').join('');$('go').disabled=!uploaded.length}
+$('go').onclick=async()=>{$('go').disabled=true;$('status').innerHTML='<span class="spin"></span>分析中，大型聊天可能要一分鐘';
+ const body={};['me','exclude','alias','since','until','tz'].forEach(k=>body[k]=$(k).value.trim());
+ let d;try{const r=await api('/run',{method:'POST',body:JSON.stringify(body)});d=await r.json()}catch(e){d={error:'連不到程式，請重新開啟 App。'}}
+ $('go').disabled=false;$('status').textContent='';render(d)};
+function bar(v,lo,hi){return '<div class="track"><i style="width:'+v+'%"></i>'+(lo!=null?'<em style="left:'+lo+'%;width:'+Math.max(1,hi-lo)+'%"></em>':'')+'</div>'}
+function render(d){
+ if(d.error){$('status').innerHTML='<span style="color:var(--bad)">'+esc(d.error)+'</span>';return}
+ const s=d.score,st=d.stats,f=d.forecast;has=true;
+ document.querySelectorAll('#nav button').forEach(b=>{b.disabled=false});if(!f)document.querySelector('[data-v=fore]').disabled=false;
+ const W=[].concat(s.warnings||[],d.notes||[]);
+ const names=Object.entries(st.people).map(([k,v])=>'<b>'+esc(k)+'</b> '+v+' 則').join('　');
+ let h='<div class="hero"><div class="cover"><b>'+s.closeness+'</b><span>親密度 / 100</span></div><div><h1>'+esc(s.band)+'</h1><div class="meta">'+names+'<br>信心「'+esc(s.confidence)+'」・趨勢「'+esc(s.trend)+'」・'+esc(st.span[0].slice(0,10))+' 到 '+esc(st.span[1].slice(0,10))+'</div></div></div><div class="body">';
+ if(W.length)h+='<div class="alert"><h3>先看這幾點，分數可能受影響</h3>'+W.map(w=>'<div>'+esc(w)+'</div>').join('')+'</div>';
+ h+='<h2>關鍵數字</h2><div class="cards"><div class="card"><b>'+s.closeness+'</b><span>親密度</span></div><div class="card"><b>'+s.romantic_signal+'</b><span>浪漫訊號</span></div><div class="card"><b>'+esc(s.romantic_direction||'—')+'</b><span>情感詞方向</span></div><div class="card"><b>'+st.total+'</b><span>訊息數</span></div><div class="card"><b>'+st.closeness_inputs.active_days+'</b><span>有聊天的天數</span></div></div>';
+ if(s.dimensions)h+='<h2>五個維度</h2>'+Object.entries(s.dimensions).map(([k,v])=>'<div class="dim"><span>'+esc(k)+'</span>'+bar(v)+'<b>'+v+'</b></div>').join('');
+ const ini=st.initiations,tot=Object.values(ini).reduce((a,b)=>a+b,0)||1;
+ h+='<h2>誰先開話題</h2>'+Object.keys(st.people).map(k=>{const v=ini[k]||0;return '<div class="dim"><span>'+esc(k)+'</span>'+bar(Math.round(100*v/tot))+'<b>'+Math.round(100*v/tot)+'%</b></div>'}).join('')+'<p class="note">以靜默 6 小時作為新話題的門檻；只描述行為，不代表誰比較在乎。</p></div>';
+ $('v-over').innerHTML=h;
+ let g='<div class="hero plain"><div><h1>未來 8 週</h1><div class="meta">依目前資料推估的關係落點與建議</div></div></div><div class="body">';
+ if(f){const sc=f.scenarios,ks=Object.keys(sc).sort((a,b)=>sc[b].point-sc[a].point);
+  g+='<h2>關係落點排行</h2><p class="sub">相對可能性，由高到低；淡色範圍是 10–90% 區間。這是手設權重的啟發式分數，不是真實機率。</p><table><tr><th>#</th><th>落點</th><th></th><th>可能性</th></tr>'+ks.map((k,i)=>'<tr class="row'+(i===0?' top':'')+'"><td>'+(i+1)+'</td><td>'+esc(k)+(k===f.current_band_scenario?'<span class="cur">目前所在</span>':'')+'</td><td style="width:34%">'+bar(sc[k].point,sc[k].p10,sc[k].p90)+'</td><td class="pct">'+sc[k].point+'% <small>('+sc[k].p10+'–'+sc[k].p90+')</small></td></tr>').join('')+'</table>';
+  g+='<p class="note">'+esc(f.scenario_note)+'</p><h2>訊息量走向</h2><div class="cards"><div class="card"><b>'+Math.round(f.fade_risk_4wk*100)+'%</b><span>未來 4 週明顯變少的風險</span></div><div class="card"><b>'+f.trend_slope_pct_per_week+'%</b><span>近期每週變化</span></div><div class="card"><b>'+f.recent_4wk_msgs_per_week+'</b><span>近 4 週平均每週則數</span></div></div>';
+  if(f.rule_advice&&f.rule_advice.length)g+='<h2>目前建議</h2><ul class="adv">'+f.rule_advice.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul><p class="note">建議只依聊天行為，不代表對方的想法，也不替你做決定。</p>'}
+ else g+='<div class="empty"><b>這份資料不做預測</b>'+esc((d.notes||[]).filter(n=>n.startsWith('未做')||n.includes('預測')).join('；')||'只適用於至少 8 週的二人聊天。')+'</div>';
+ g+='</div>';$('v-fore').innerHTML=g;
+ $('v-chart').innerHTML='<div class="hero plain"><div><h1>圖表</h1><div class="meta">點擊圖片放大</div></div></div><div class="body">'+(d.images.length?'<div class="imgs">'+d.images.map(i=>'<figure><img loading="lazy" src="/img/'+i+'?t='+T+'" alt="'+esc(i)+'"></figure>').join('')+'</div>':'<div class="empty"><b>沒有圖表</b>圖表產生失敗，請看總覽的警告。</div>')+'</div>';
+ $('v-exp').innerHTML='<div class="hero plain"><div><h1>匯出</h1><div class="meta">把結果帶走，或貼給 Claude 寫成完整的敘事報告</div></div></div><div class="body"><div class="play"><button class="go" onclick="location.href=\'/download.zip?t='+T+'\'">下載全部結果</button></div><p class="note">壓縮檔內有 stats、score、forecast 三份 JSON、逐則明細 CSV 和所有圖表。CSV 不含聊天文字內容。</p><h2>限制</h2><p class="sub">只看文字；門檻是經驗設定，沒有用大樣本校準；機率是啟發式分數；電話與見面看不到；文字看不出性別與血緣，兄弟、姊妹、閨蜜統稱「摯友」，家人關係需本人確認。</p></div>';
+ show('over')}
+document.addEventListener('click',e=>{const i=e.target.closest('.imgs img');if(i){$('lbimg').src=i.src;$('lb').classList.add('on')}else if(e.target.closest('#lb'))$('lb').classList.remove('on')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('lb').classList.remove('on')});
+</script></body></html>
