@@ -1,0 +1,41 @@
+name: build-desktop-app
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: ChatRelationshipReport-windows, sep: ';' }
+          - { os: macos-latest,   name: ChatRelationshipReport-macos,   sep: ':' }
+          - { os: ubuntu-latest,  name: ChatRelationshipReport-linux,   sep: ':' }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt pyinstaller
+      - name: Build
+        shell: bash
+        run: |
+          pyinstaller --noconfirm --onefile --name "${{ matrix.name }}" \
+            --add-data "scripts${{ matrix.sep }}scripts" \
+            --hidden-import pandas --hidden-import numpy --hidden-import scipy.stats \
+            --hidden-import matplotlib.backends.backend_agg --collect-data matplotlib \
+            app.py
+      - name: Smoke test (啟動後能回應)
+        shell: bash
+        run: |
+          NO_BROWSER=1 PORT=8799 ./dist/${{ matrix.name }}* > smoke.log 2>&1 &
+          sleep 15; cat smoke.log
+          T=$(grep -o 't=[A-Za-z0-9_-]*' smoke.log | head -1 | cut -c3-)
+          curl -sf "http://127.0.0.1:8799/?t=$T" > /dev/null
+      - uses: actions/upload-artifact@v4
+        with: { name: "${{ matrix.name }}", path: dist/* }
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with: { files: dist/* }

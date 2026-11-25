@@ -1,0 +1,13 @@
+__pycache__/
+build/
+dist/
+*.spec
+*.pyc
+# 聊天原始檔與分析結果含個人隱私，絕對不要提交
+*.txt
+!requirements.txt
+!README.txt
+messages.csv
+stats.json
+score.json
+forecast.json
