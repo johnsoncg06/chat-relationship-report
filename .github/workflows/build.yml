@@ -1,7 +1,10 @@
 name: build-installers
-# 打 tag（例如 v0.1.0）會自動打包並發佈到 Releases；也可在 Actions 頁手動執行。
+# 推到 main（改到程式檔）、打 tag（v*）或手動執行，都會編譯三個平台；
+# 全部通過檢查後才會建立新版本 Release（版本號自動遞增），任何必要平台失敗就不發布。
 on:
   push:
+    branches: [main]
+    paths: ['app.py', 'scripts/**', 'web/**', 'assets/**', 'installer.iss', 'requirements.txt', 'tests/**', '.github/workflows/build.yml']
     tags: ['v*']
   workflow_dispatch:
 permissions:
@@ -12,63 +15,99 @@ env:
     --hidden-import pandas --hidden-import numpy --hidden-import scipy.stats
     --hidden-import matplotlib.backends.backend_agg --collect-data matplotlib
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then T="$GITHUB_REF_NAME"
+          else
+            LAST=$(git tag -l 'v0.1.*' --sort=-v:refname | head -1)
+            N=$(( ${LAST##*.} + 1 )); [[ -z "$LAST" ]] && N=0
+            T="v0.1.$N"
+          fi
+          echo "tag=$T" >> "$GITHUB_OUTPUT"; echo "將發布 $T"
+
   windows:
+    needs: version
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
       - run: pip install -r requirements.txt pyinstaller pillow
       - name: PyInstaller (onedir)
         shell: bash
         run: pyinstaller $PYI_COMMON --onedir --add-data "scripts;scripts" --add-data "web;web" app.py
-      - name: Smoke test
+      - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         shell: bash
         run: |
           CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe &
-          sleep 20
-          curl -sf "http://127.0.0.1:8799/?t=smoke" | grep -q "聊天關係報告"
+          python tests/smoke.py 8799 smoke
       - name: Inno Setup installer
         shell: bash
         run: |
           choco install innosetup -y --no-progress
-          VER="${GITHUB_REF_NAME#v}"; [[ "$GITHUB_REF_TYPE" == "tag" ]] || VER="0.0.0-dev"
+          VER="${{ needs.version.outputs.tag }}"; VER="${VER#v}"
           "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "//DAppVersion=$VER" installer.iss
-      - uses: actions/upload-artifact@v4
-        with: { name: windows-installer, path: installer/*.exe }
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with: { files: installer/*.exe }
+          cp installer/ChatRelationshipReport-Setup-*.exe installer/ChatRelationshipReport-Windows-Setup.exe
+      - name: Windows Defender 掃描（主程式與安裝程式）
+        shell: pwsh
+        run: |
+          $mp = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'
+          & $mp -SignatureUpdate | Out-Null
+          foreach ($f in @('dist\ChatRelationshipReport\ChatRelationshipReport.exe', 'installer\ChatRelationshipReport-Windows-Setup.exe')) {
+            & $mp -Scan -ScanType 3 -File (Resolve-Path $f).Path -DisableRemediation
+            if ($LASTEXITCODE -ne 0) { Write-Error "Defender 判定 $f 有威脅（結束碼 $LASTEXITCODE）"; exit 1 }
+          }
+      - uses: actions/upload-artifact@v5
+        with: { name: windows-installer, path: installer/ChatRelationshipReport-Windows-Setup.exe }
 
   macos:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { runner: macos-latest,      arch: arm64 }   # Apple Silicon（M1 以後）
-          - { runner: macos-15-intel,    arch: intel }   # Intel Mac
+          - { runner: macos-latest,   arch: arm64 }   # Apple Silicon（M1 以後）
+          - { runner: macos-15-intel, arch: intel }   # Intel Mac；失敗不擋發布，但該版本會缺檔
     runs-on: ${{ matrix.runner }}
     continue-on-error: ${{ matrix.arch == 'intel' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
       - run: pip install -r requirements.txt pyinstaller pillow
       - name: PyInstaller (.app)
         run: pyinstaller $PYI_COMMON --onedir --osx-bundle-identifier io.github.johnsoncg06.chatrelationshipreport --add-data "scripts:scripts" --add-data "web:web" app.py
-      - name: Smoke test
+      - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         run: |
           CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport &
-          sleep 20
-          curl -sf "http://127.0.0.1:8799/?t=smoke" | grep -q "聊天關係報告"
+          python tests/smoke.py 8799 smoke
       - name: Build .dmg
         run: |
           mkdir dmgroot && cp -R dist/ChatRelationshipReport.app dmgroot/ && ln -s /Applications dmgroot/Applications
           hdiutil create -volname "Chat Relationship Report" -srcfolder dmgroot -ov -format UDZO "ChatRelationshipReport-macOS-${{ matrix.arch }}.dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with: { name: "macos-dmg-${{ matrix.arch }}", path: "*.dmg" }
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with: { files: "*.dmg" }
+
+  release:
+    needs: [version, windows, macos]
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with: { path: assets, merge-multiple: true }
+      - name: SHA256SUMS 與發布
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          cd assets && ls -l && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "$TAG" \
+            --notes "自動編譯並通過自我檢查。未簽章：Windows 會出現 SmartScreen、macOS 請按右鍵→打開。可用 SHA256SUMS.txt 核對檔案。" ./* \
+            || gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber ./*

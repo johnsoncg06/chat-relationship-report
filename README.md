@@ -8,7 +8,7 @@
 
 | 系統 | 檔案 | 說明 |
 |---|---|---|
-| Windows | `ChatRelationshipReport-Setup-x.y.z.exe` | 安裝程式，可選桌面捷徑 |
+| Windows | `ChatRelationshipReport-Windows-Setup.exe` | 安裝程式，可選桌面捷徑 |
 | macOS（Apple Silicon，M1 以後） | `ChatRelationshipReport-macOS-arm64.dmg` | 開啟後把 App 拖進「Applications」 |
 | macOS（Intel） | `ChatRelationshipReport-macOS-intel.dmg` | 同上 |
 
@@ -51,3 +51,11 @@ python app.py        # macOS 也可雙擊 run.command，Windows 雙擊 run.bat
 
 ## 隱私
 `.gitignore` 已排除 `*.txt` 與分析輸出。**請勿把聊天記錄提交到 GitHub。**
+
+## 發布流程（給維護者）
+
+- 推到 `main`（改到程式、介面、腳本、圖示或 workflow）就會自動編譯 Windows、macOS arm64、macOS Intel。
+- 每個平台都會做「自我檢查」：開啟 App、上傳一份合成聊天、跑完整流程；Windows 另外做 Defender 掃描。
+- Windows 與 Apple 晶片版全部通過才發布新版本（版本號 v0.1.N 自動遞增，附 `SHA256SUMS.txt`）；Intel 版失敗不擋發布，但該版本會缺 `.dmg`。
+- 只改 README 不會觸發編譯。要強制重編，到 Actions → build-installers → Run workflow。
+- 自我檢查只證明「打得開、元件齊全」，取代不了實機測試。
