@@ -6,6 +6,13 @@ import os, sys, io, json, glob, shutil, tempfile, secrets, threading, webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+for _n in ('stdout', 'stderr'):   # Windows 主控台常是 cp1252 / 視窗模式下為 None：避免印中文就崩潰
+    _s = getattr(sys, _n, None)
+    if _s is None: setattr(sys, _n, open(os.devnull, 'w', encoding='utf-8'))
+    else:
+        try: _s.reconfigure(encoding='utf-8', errors='replace')
+        except Exception: pass
+
 BASE = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
 SCRIPTS = os.path.join(BASE, 'scripts')
 TOKEN = os.environ.get('CHATREL_TOKEN') or secrets.token_urlsafe(16)   # CHATREL_TOKEN 僅供自動化測試
