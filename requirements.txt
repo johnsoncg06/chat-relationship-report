@@ -1,4 +1,2 @@
-pandas
-numpy
-scipy
-matplotlib
+# 執行期不需要任何第三方套件（只用 Python 標準函式庫）。
+# 打包用：pip install pyinstaller pillow

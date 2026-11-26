@@ -3,44 +3,47 @@
 未來走勢（情境模擬）＋各種關係的相對可能性＋規則式建議。
 重要：沒有「真實關係結果」的標註資料可校準，所以輸出是【啟發式情境分數】，不是真正的機率。
 可能性是用手設權重的 softmax 加上輸入擾動得到區間；解讀時只看排序與區間寬度，不當成預言。"""
-import sys, json, math, random
-import numpy as np, pandas as pd
+import sys, os, json, math, random
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _lite as lt
 
 csv_path, stats_path, score_path = sys.argv[1:4]
-df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path, encoding='utf-8')); SC = json.load(open(score_path, encoding='utf-8'))
-rng = random.Random(0); nrng = np.random.default_rng(0)
+rows = lt.load_csv(csv_path); S = json.load(open(stats_path, encoding='utf-8')); SC = json.load(open(score_path, encoding='utf-8'))
+rng = random.Random(0); nrng = random.Random(1)
 if S.get('is_group') or 'error' in S or not SC.get('dimensions'):
     print(json.dumps({'error': 'only_for_two_person_chats'}, ensure_ascii=False)); sys.exit()
 
-wk = df.set_index('ts').resample('W').size()
-y = np.log1p(wk.values.astype(float)); n = len(y)
+_, wk_n = lt.weekly_counts(rows)
+y = [math.log1p(v) for v in wk_n]; n = len(y)
 H = 8
 out = {'weeks_observed': int(n), 'horizon_weeks': H}
 if n < 8:
     print(json.dumps({'error': 'need_8_weeks', 'weeks': int(n)}, ensure_ascii=False)); sys.exit()
 
 # ---- 1. 未來訊息量：近 k 週線性趨勢 + 衰減（damped）+ 殘差重抽樣 ----
-k = min(12, n); x = np.arange(k); yy = y[-k:]
-b, a0 = np.polyfit(x, yy, 1); res = yy - (a0 + b * x); sd = float(res.std(ddof=2)) if k > 3 else 0.3
+k = min(12, n); x = list(range(k)); yy = y[-k:]
+b, a0 = lt.polyfit1(x, yy); res = [v - (a0 + b * i) for i, v in enumerate(yy)]; sd = lt.std(res, ddof=2) if k > 3 else 0.3
 def simulate(slope, phi=0.85, reps=600):
-    paths = np.zeros((reps, H))
+    paths = []
     for r in range(reps):
-        lvl = yy[-3:].mean(); s = slope
+        lvl = lt.mean(yy[-3:]); s = slope; row = []
         for h in range(H):
             s *= phi; lvl += s
-            paths[r, h] = max(0.0, lvl + nrng.choice(res) * 1.0)
-    return np.expm1(paths)
+            row.append(math.expm1(max(0.0, lvl + nrng.choice(res) * 1.0)))
+        paths.append(row)
+    return paths
 P = simulate(b)
-recent = float(np.expm1(yy[-4:]).mean())
+col = lambda h: [p[h] for p in P]
+recent = lt.mean([math.expm1(v) for v in yy[-4:]])
 out['recent_4wk_msgs_per_week'] = round(recent, 1)
-out['forecast_msgs_per_week'] = {f'+{h+1}w': {'p10': round(float(np.percentile(P[:, h], 10)), 1), 'p50': round(float(np.percentile(P[:, h], 50)), 1), 'p90': round(float(np.percentile(P[:, h], 90)), 1)} for h in range(H)}
+out['forecast_msgs_per_week'] = {f'+{h+1}w': {'p10': round(lt.percentile(col(h), 10), 1), 'p50': round(lt.percentile(col(h), 50), 1), 'p90': round(lt.percentile(col(h), 90), 1)} for h in range(H)}
 out['trend_slope_pct_per_week'] = round(100 * (math.exp(b) - 1), 1)
 # 淡出風險：未來 4 週平均量 < 近期的 30%
-fade = float(np.mean(P[:, :4].mean(axis=1) < 0.3 * max(recent, 1)))
-growth = float(np.log((P[:, :8].mean() + 1) / (recent + 1)))
+fade = lt.mean([1.0 if lt.mean(p[:4]) < 0.3 * max(recent, 1) else 0.0 for p in P])
+growth = math.log((lt.mean([v for p in P for v in p[:8]]) + 1) / (recent + 1))
 out['fade_risk_4wk'] = round(fade, 3); out['log_growth_ratio'] = round(growth, 3)
-hist = np.expm1(y[:-8]) if n >= 16 else np.expm1(y[:max(1, n // 2)])
-drop = float(np.clip(1 - recent / max(float(np.median(hist)), 1), 0, 1))   # 近期量相對先前常態掉了多少（已發生的下滑）
+hist = [math.expm1(v) for v in (y[:-8] if n >= 16 else y[:max(1, n // 2)])]
+drop = min(1.0, max(0.0, 1 - recent / max(lt.median(hist), 1)))   # 近期量相對先前常態掉了多少（已發生的下滑）
 out['drop_vs_earlier'] = round(drop, 3)
 out['forecast_note'] = '情境模擬：假設趨勢逐週衰減（phi=0.85）、殘差沿用近期波動；不含任何外部事件（考試、搬家、新對象）。'
 
@@ -59,18 +62,19 @@ def scenario_probs(c, r, g, f, rec, trend_up, asym, drop=0.0):
      '情侶／伴侶': 3.0 * r * c + 1.2 * max(g, 0) + 0.8 * (rec / 100) - 1.5 * asym - 1.5 * f - 0.6 - 2.5 * drop,
     }
     if cur_key: L[cur_key] += 1.6   # 現在所處的區間有慣性：多數關係短期內不會換區間
-    ks = list(L); v = np.array([L[k_] for k_ in ks]) / 1.6   # 溫度 1.6：刻意壓平，避免假精確
-    p = np.exp(v - v.max()); p /= p.sum()
-    return dict(zip(ks, p))
+    ks = list(L); v = [L[k_] / 1.6 for k_ in ks]   # 溫度 1.6：刻意壓平，避免假精確
+    m_ = max(v); e_ = [math.exp(t - m_) for t in v]; z_ = sum(e_)
+    return dict(zip(ks, [t / z_ for t in e_]))
 asym = 1.0 if SC.get('romantic_direction') == '單向偏重' else 0.0
 trend_up = {'升溫': 1.0, '持平': 0.0, '降溫': -1.0}.get(SC['trend'], 0.0)
 base = scenario_probs(SC['closeness'], SC['romantic_signal'], growth, fade, D['回應'], trend_up, asym, drop)
 draws = {k_: [] for k_ in base}
 for _ in range(400):   # 輸入不確定度：分數 ±8、成長 ±0.25、淡出 ±0.1
-    d_ = scenario_probs(np.clip(SC['closeness'] + rng.gauss(0, 8), 0, 100), np.clip(SC['romantic_signal'] + rng.gauss(0, 8), 0, 100),
-                        growth + rng.gauss(0, .25), float(np.clip(fade + rng.gauss(0, .1), 0, 1)), D['回應'], trend_up, asym, drop)
+    clip = lambda v_, lo_, hi_: min(hi_, max(lo_, v_))
+    d_ = scenario_probs(clip(SC['closeness'] + rng.gauss(0, 8), 0, 100), clip(SC['romantic_signal'] + rng.gauss(0, 8), 0, 100),
+                        growth + rng.gauss(0, .25), clip(fade + rng.gauss(0, .1), 0, 1), D['回應'], trend_up, asym, drop)
     for k_, v_ in d_.items(): draws[k_].append(v_)
-out['scenarios'] = {k_: {'point': round(100 * base[k_], 1), 'p10': round(100 * float(np.percentile(draws[k_], 10)), 1), 'p90': round(100 * float(np.percentile(draws[k_], 90)), 1)} for k_ in base}
+out['scenarios'] = {k_: {'point': round(100 * base[k_], 1), 'p10': round(100 * lt.percentile(draws[k_], 10), 1), 'p90': round(100 * lt.percentile(draws[k_], 90), 1)} for k_ in base}
 out['current_band_scenario'] = cur_key
 out['stay_probability_pct'] = out['scenarios'][cur_key]['point'] if cur_key else None   # 「維持目前關係」= 落在目前區間的相對可能性
 out['scenario_note'] = '情境名稱是「未來 8 週最可能落在哪個區間」，目前所處區間已加慣性。手設權重的 softmax，未用真實關係結果校準；可能性之和為 100%，只代表「在這五種落點裡，目前資料偏向哪一邊」。文字看不出性別與血緣：兄弟／姊妹／閨蜜／哥們統稱摯友，家人關係需本人確認，不在預測範圍。'

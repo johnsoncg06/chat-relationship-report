@@ -12,9 +12,7 @@ permissions:
 env:
   PYI_COMMON: >-
     --noconfirm --windowed --name ChatRelationshipReport --icon assets/icon.png
-    --hidden-import pandas --hidden-import numpy --hidden-import scipy.stats
-    --hidden-import matplotlib.backends.backend_agg --collect-data matplotlib
-    --exclude-module tkinter --exclude-module _tkinter --exclude-module matplotlib.backends.backend_tkagg --exclude-module matplotlib.backends.backend_qt5agg --exclude-module matplotlib.backends.backend_qtagg --exclude-module matplotlib.backends.backend_webagg --exclude-module matplotlib.backends.backend_wxagg --exclude-module matplotlib.backends.backend_gtk3agg --exclude-module matplotlib.backends.backend_macosx --exclude-module PyQt5 --exclude-module PyQt6 --exclude-module PySide2 --exclude-module PySide6 --exclude-module wx --exclude-module IPython --exclude-module jupyter --exclude-module notebook --exclude-module pytest --exclude-module sphinx --exclude-module numpy.tests --exclude-module pandas.tests --exclude-module scipy.tests --exclude-module matplotlib.tests
+    --exclude-module tkinter --exclude-module _tkinter --exclude-module numpy --exclude-module pandas --exclude-module scipy --exclude-module matplotlib --exclude-module PIL
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -41,7 +39,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
-      - run: pip install -r requirements.txt pyinstaller pillow
+      - run: pip install pyinstaller pillow
       - name: PyInstaller (onedir)
         shell: bash
         run: pyinstaller $PYI_COMMON --onedir --add-data "scripts;scripts" --add-data "web;web" app.py
@@ -92,7 +90,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
-      - run: pip install -r requirements.txt pyinstaller pillow
+      - run: pip install pyinstaller pillow
       - name: PyInstaller (.app)
         run: pyinstaller $PYI_COMMON --onedir --osx-bundle-identifier io.github.johnsoncg06.chatrelationshipreport --add-data "scripts:scripts" --add-data "web:web" app.py
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）

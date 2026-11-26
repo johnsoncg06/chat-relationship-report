@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """聊天關係報告 — 桌面 App（本機執行，資料不離開你的電腦）。
 啟動後會在本機開一個只有你能連的網頁介面（127.0.0.1），上傳 LINE .txt / IG .json 即可產出分數、圖表、預測。
-只用 Python 標準函式庫＋ pandas / numpy / scipy / matplotlib。"""
+只用 Python 標準函式庫（圖表輸出 SVG，由瀏覽器渲染）。"""
 import os, sys, io, json, glob, shutil, tempfile, secrets, threading, webbrowser, runpy, zipfile, contextlib, traceback
+import argparse, statistics, csv, random, math, re, datetime, collections, functools, xml.sax.saxutils   # noqa：腳本用 runpy 載入，這行讓 PyInstaller 看見它們
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -80,7 +81,7 @@ def pipeline(p):
             fp = os.path.join(out, 'forecast.json'); open(fp, 'w', encoding='utf-8').write(txt)
             _, err = run_script('chat_dashboard.py', [csv_p, st_p, sc_p, fp, chart_dir])
             if err: notes.append('總覽圖失敗：' + err.strip().splitlines()[-1])
-    imgs = sorted(os.path.basename(f) for f in glob.glob(os.path.join(chart_dir, '*.png')))
+    imgs = sorted(os.path.basename(f) for f in glob.glob(os.path.join(chart_dir, '*.svg')))
     return {'stats': stats, 'score': score, 'forecast': fc, 'images': imgs, 'notes': notes}
 
 
@@ -151,7 +152,7 @@ class H(BaseHTTPRequestHandler):
         if u.path == '/': return self._ok(200, 'text/html; charset=utf-8', page())
         if u.path.startswith('/img/'):
             f = os.path.join(WORK, 'out', 'charts', os.path.basename(u.path))
-            if os.path.isfile(f): return self._ok(200, 'image/png', open(f, 'rb').read())
+            if os.path.isfile(f): return self._ok(200, 'image/svg+xml' if f.endswith('.svg') else 'image/png', open(f, 'rb').read())
         if u.path == '/download.zip':
             buf = io.BytesIO(); root = os.path.join(WORK, 'out')
             with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:

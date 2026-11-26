@@ -23,7 +23,7 @@ App 會開成獨立視窗（用系統上的 Edge 或 Chrome；找不到就用預
 **從原始碼跑**（Python 3.10+）：
 
 ```bash
-pip install -r requirements.txt
+# 不需要安裝任何套件（只用標準函式庫）
 python app.py        # macOS 也可雙擊 run.command，Windows 雙擊 run.bat
 ```
 
