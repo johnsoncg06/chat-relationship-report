@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""聊天關係報告 — 桌面 App（本機執行，資料不離開你的電腦）。
+"""暈船小狗偵測器 — 桌面 App（本機執行，資料不離開你的電腦）。
 啟動後會在本機開一個只有你能連的網頁介面（127.0.0.1），上傳 LINE .txt / IG .json 即可產出分數、圖表、預測。
 只用 Python 標準函式庫（圖表輸出 SVG，由瀏覽器渲染）。"""
 import os, sys, io, json, glob, shutil, tempfile, secrets, threading, webbrowser, runpy, zipfile, contextlib, traceback
@@ -254,7 +254,7 @@ def main():
     if sys.stdout is None: sys.stdout = open(os.devnull, 'w')   # 無主控台環境避免 print 當掉
     srv = ThreadingHTTPServer(('127.0.0.1', int(os.environ.get('PORT', 0))), H)
     url = f'http://127.0.0.1:{srv.server_address[1]}/?t={TOKEN}'
-    print('聊天關係報告已啟動：', url, '\n（關閉此視窗即結束；資料只存在本機暫存資料夾）', flush=True)
+    print('暈船小狗偵測器已啟動：', url, '\n（關閉此視窗即結束；資料只存在本機暫存資料夾）', flush=True)
     if not os.environ.get('NO_BROWSER'): threading.Timer(0.6, lambda: open_window(url)).start()
     threading.Thread(target=watchdog, daemon=True).start()
     try: srv.serve_forever()

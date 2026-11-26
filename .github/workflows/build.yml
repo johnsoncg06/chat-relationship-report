@@ -100,7 +100,7 @@ jobs:
       - name: Build .dmg
         run: |
           mkdir dmgroot && cp -R dist/ChatRelationshipReport.app dmgroot/ && ln -s /Applications dmgroot/Applications
-          hdiutil create -volname "Chat Relationship Report" -srcfolder dmgroot -ov -format UDZO "ChatRelationshipReport-macOS-${{ matrix.arch }}.dmg"
+          hdiutil create -volname "暈船小狗偵測器" -srcfolder dmgroot -ov -format UDZO "ChatRelationshipReport-macOS-${{ matrix.arch }}.dmg"
       - uses: actions/upload-artifact@v5
         with: { name: "macos-dmg-${{ matrix.arch }}", path: "*.dmg" }
 

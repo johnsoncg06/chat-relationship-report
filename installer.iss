@@ -2,7 +2,7 @@
 #ifndef AppVersion
   #define AppVersion "0.1.0"
 #endif
-#define AppName "Chat Relationship Report"
+#define AppName "暈船小狗偵測器"
 #define AppExe "ChatRelationshipReport.exe"
 
 [Setup]

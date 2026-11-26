@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>聊天關係報告</title>
+<title>暈船小狗偵測器</title>
 <style>
 :root{--base:#121212;--side:#000;--panel:#181818;--raise:#242424;--hover:#2a2a2a;--line:#2e2e2e;--ink:#fff;--mute:#b3b3b3;--dim:#7a7a7a;--g:#1ed760;--g2:#1db954;--warn:#f5a623;--bad:#f15e6c}
 *{box-sizing:border-box}html,body{height:100%}
@@ -74,10 +74,46 @@ ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);bord
 select{width:100%;background:var(--raise);border:1px solid transparent;border-radius:6px;padding:11px 12px;color:#fff;font:inherit}select:hover{border-color:#444}select:focus{outline:none;border-color:var(--g)}p.sub b{font-size:inherit;color:#fff}
 .c-cool{background:#3a1c20;color:#ffc4ca}.c-warm{background:#143222;color:#9ef0b8}.c-flat{background:#262626;color:#aaa}.c-na{background:#262626;color:#777}
 .tbl tr.row td:first-child{width:auto;color:inherit}.tbl td,.tbl th{text-align:left;padding:8px 10px;font-size:13.5px;vertical-align:top}
+
+/* ===== Spotify × 毛玻璃：圓角與半透明模糊層（放最後覆蓋前面的樣式） ===== */
+:root{--glass:rgba(24,24,24,.58);--glass2:rgba(255,255,255,.06);--glass-line:rgba(255,255,255,.09);--blur:blur(22px) saturate(1.5)}
+body{background:#0b0b0b;position:relative}
+body::before{content:"";position:fixed;inset:-10%;z-index:0;pointer-events:none;background:radial-gradient(520px 420px at 12% 8%,rgba(30,215,96,.30),transparent 70%),radial-gradient(560px 460px at 88% 22%,rgba(167,139,250,.24),transparent 70%),radial-gradient(520px 440px at 70% 92%,rgba(245,115,160,.20),transparent 70%),radial-gradient(480px 400px at 6% 86%,rgba(80,155,245,.18),transparent 70%)}
+aside,main{position:relative;z-index:1}
+aside{background:rgba(0,0,0,.52);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--glass-line);border-radius:22px;margin:10px 0 10px 10px}
+main{background:rgba(18,18,18,.55);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--glass-line);border-radius:22px;margin:10px}
+nav button{border-radius:14px}nav button.on{background:var(--glass2);box-shadow:inset 0 0 0 1px var(--glass-line)}
+.quit{border-radius:14px}
+.hero{background:linear-gradient(180deg,rgba(30,215,96,.30) 0%,rgba(22,64,43,.30) 55%,transparent 100%)}
+.hero.plain{background:linear-gradient(180deg,rgba(255,255,255,.09),transparent)}
+.cover{border-radius:24px}
+.card,ul.adv li,.grp,.drop,.imgs figure{background:var(--glass2);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--glass-line);border-radius:18px}
+.card:hover,ul.adv li:hover{background:rgba(255,255,255,.1)}
+.grp{padding:18px;margin:16px 0}
+.drop{border:2px dashed rgba(255,255,255,.2);border-radius:20px}.drop:hover,.drop.on{background:rgba(30,215,96,.1)}
+.alert{background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.28);border-left:4px solid var(--warn);border-radius:16px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.alert.bad{background:rgba(241,94,108,.12);border-color:rgba(241,94,108,.3);border-left:4px solid var(--bad)}
+input,select{background:rgba(255,255,255,.07);border:1px solid var(--glass-line);border-radius:14px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+input:hover,select:hover{border-color:rgba(255,255,255,.22)}input:focus,select:focus{border-color:var(--g);box-shadow:0 0 0 3px rgba(30,215,96,.18)}
+input[type=checkbox]{border-radius:6px}
+.chip{background:rgba(255,255,255,.09);border:1px solid var(--glass-line);border-radius:500px}
+.go{box-shadow:0 8px 24px rgba(30,215,96,.28)}.go:disabled{box-shadow:none;background:rgba(255,255,255,.12);color:#888}
+.mini{background:rgba(255,255,255,.08);border:1px solid var(--glass-line);border-radius:500px;padding:5px 14px;font-weight:700;font-size:12.5px}.mini:hover{background:rgba(255,255,255,.16);color:#fff}
+.ghost{border-color:rgba(255,255,255,.28)}
+tr.row td:first-child{border-radius:12px 0 0 12px}tr.row td:last-child{border-radius:0 12px 12px 0}tr.row:hover td{background:rgba(255,255,255,.07)}
+th{border-bottom:1px solid var(--glass-line)}
+.track{background:rgba(255,255,255,.12)}
+.c-cool,.c-warm,.c-flat,.c-na{border-radius:500px;padding:2px 10px}
+.imgs figure{background:none!important;border:0!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.35)}.imgs figure img{border-radius:16px}
+.lb{background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}.lb img{border-radius:18px;box-shadow:0 20px 80px rgba(0,0,0,.6)}
+svg[style*="background:#181818"]{background:rgba(255,255,255,.04)!important;border:1px solid var(--glass-line);border-radius:18px}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:10px;border:2px solid transparent;background-clip:content-box}::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3);background-clip:content-box;border:2px solid transparent}
+@media(max-width:760px){aside{margin:0 10px 10px;border-radius:20px}main{margin:10px 10px 0}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){aside{background:#000}main{background:#181818}.card,.grp,.imgs figure{background:#242424}}
 </style></head>
 <body>
 <aside>
- <div class="brand"><svg viewBox="0 0 32 32"><circle cx="16" cy="15" r="13" fill="#1ed760"/><path d="M7 25l1-6 6 3z" fill="#1ed760"/><g fill="#000"><rect x="9" y="12" width="2.6" height="7" rx="1.3"/><rect x="13" y="9" width="2.6" height="12" rx="1.3"/><rect x="17" y="7" width="2.6" height="16" rx="1.3"/><rect x="21" y="10" width="2.6" height="10" rx="1.3"/></g></svg>聊天關係報告</div>
+ <div class="brand"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#1ed760"/><path d="M6 8c-2.5 4-1 9 2 10l3-8zM26 8c2.5 4 1 9-2 10l-3-8z" fill="#0b3d20"/><ellipse cx="16" cy="17.5" rx="8.6" ry="8" fill="#eafff1"/><circle cx="12.4" cy="16" r="1.5" fill="#0b3d20"/><circle cx="19.6" cy="16" r="1.5" fill="#0b3d20"/><ellipse cx="16" cy="20" rx="2.4" ry="1.7" fill="#0b3d20"/><path d="M13.6 22.6q2.4 2 4.8 0" stroke="#0b3d20" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>暈船小狗偵測器</div>
  <nav id="nav">
   <button data-v="start" class="on"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg><span>開始分析</span></button>
   <button data-v="over" disabled><svg viewBox="0 0 24 24"><path d="M4 13h4v7H4zm6-9h4v16h-4zm6 5h4v11h-4z"/></svg><span>總覽</span></button>
