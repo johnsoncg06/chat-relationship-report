@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """用法: python3 score_intimacy.py stats.json  -> 親密度/浪漫訊號/五維度/區間/信心"""
 import json, sys, statistics as st
-d = json.load(open(sys.argv[1]))
+d = json.load(open(sys.argv[1], encoding='utf-8'))
 if 'error' in d: print(json.dumps(d, ensure_ascii=False)); sys.exit()
 ci = d['closeness_inputs']
 def lin(x, lo, hi):  # 線性映射到 0-100（錨點為經驗設定，非常模樣本）

@@ -9,7 +9,7 @@ from matplotlib import font_manager as fm
 
 csv_path, stats_path, score_path, fc_path, out = sys.argv[1:6]
 os.makedirs(out, exist_ok=True)
-df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path)); SC = json.load(open(score_path)); F = json.load(open(fc_path))
+df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path, encoding='utf-8')); SC = json.load(open(score_path, encoding='utf-8')); F = json.load(open(fc_path, encoding='utf-8'))
 if 'error' in F: print(json.dumps(F, ensure_ascii=False)); sys.exit()
 names = {f.name for f in fm.fontManager.ttflist}
 font = next((f for f in ['Noto Sans CJK TC', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'PingFang TC', 'Microsoft JhengHei', 'Heiti TC', 'WenQuanYi Zen Hei', 'Arial Unicode MS'] if f in names), None)
@@ -74,5 +74,5 @@ save(fig, '13_dashboard.png')
 card = {'scores': {k: SC[k] for k in ('closeness', 'romantic_signal', 'band', 'trend', 'confidence', 'romantic_direction')}, 'dimensions': SC['dimensions'],
         'people': people, 'initiation_share_pct': {p: round(100 * ini.get(p, 0) / tot, 1) for p in people}, 'median_reply_min': lat,
         'fade_risk_4wk': F['fade_risk_4wk'], 'scenarios': F['scenarios'], 'advice_rules': F['rule_advice']}
-json.dump(card, open(os.path.join(out, 'scorecard.json'), 'w'), ensure_ascii=False, indent=1)
+json.dump(card, open(os.path.join(out, 'scorecard.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(sorted(os.listdir(out)))

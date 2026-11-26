@@ -7,7 +7,7 @@ import sys, json, math, random
 import numpy as np, pandas as pd
 
 csv_path, stats_path, score_path = sys.argv[1:4]
-df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path)); SC = json.load(open(score_path))
+df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path, encoding='utf-8')); SC = json.load(open(score_path, encoding='utf-8'))
 rng = random.Random(0); nrng = np.random.default_rng(0)
 if S.get('is_group') or 'error' in S or not SC.get('dimensions'):
     print(json.dumps({'error': 'only_for_two_person_chats'}, ensure_ascii=False)); sys.exit()

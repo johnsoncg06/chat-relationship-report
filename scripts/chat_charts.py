@@ -10,7 +10,7 @@ from scipy import stats as sps
 
 csv_path, stats_path, score_path, out = sys.argv[1:5]
 os.makedirs(out, exist_ok=True)
-df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path)); SC = json.load(open(score_path))
+df = pd.read_csv(csv_path, parse_dates=['ts']); S = json.load(open(stats_path, encoding='utf-8')); SC = json.load(open(score_path, encoding='utf-8'))
 people = list(S['people'])[:2] if not S['is_group'] else list(S['people'])[:6]
 names = {f.name for f in fm.fontManager.ttflist}
 font = next((f for f in ['Noto Sans CJK TC', 'Noto Sans CJK SC', 'Noto Sans CJK JP', 'PingFang TC', 'Microsoft JhengHei', 'Heiti TC', 'WenQuanYi Zen Hei', 'Arial Unicode MS'] if f in names), None)
@@ -122,5 +122,5 @@ fig = plt.figure(figsize=(5.4, 5.4)); ax = fig.add_subplot(111, polar=True)
 ax.plot(np.r_[ang, ang[0]], np.r_[vals, vals[0]], color='#1c7ed6'); ax.fill(np.r_[ang, ang[0]], np.r_[vals, vals[0]], alpha=.25, color='#1c7ed6')
 ax.set_xticks(ang); ax.set_xticklabels(labs if font else [f'd{i+1}' for i in range(len(labs))]); ax.set_ylim(0, 100); ax.set_title(L('五維度（互惠／回應／投入／溫度／穩定）', 'Five dimensions') if SC.get('dimensions') else L('親密度子分數', 'Closeness sub-scores'), pad=14)
 save(fig, '10_closeness_radar.png')
-json.dump(summ, open(os.path.join(out, 'charts_summary.json'), 'w'), ensure_ascii=False, indent=1)
+json.dump(summ, open(os.path.join(out, 'charts_summary.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(sorted(os.listdir(out)))

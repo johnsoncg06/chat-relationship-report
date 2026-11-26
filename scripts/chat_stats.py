@@ -297,7 +297,7 @@ def main():
         for k_, v in sorted(by_m.items()): picked += rng.sample(v, min(len(v), max(1, round(a.sample_n * len(v) / tot))))
         picked.sort()
         json.dump([{'id': j, 'ts': str(T[i]['t']), 'who': T[i]['who'], 'text': T[i]['text'][:200]} for j, i in enumerate(picked)],
-                  open(a.sample_out, 'w'), ensure_ascii=False, indent=1)
+                  open(a.sample_out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
     # ---- 風格同步／we-talk／節奏相似度／結構化對話偵測（實驗性：研究多為英語情侶，中文效度未驗證）----
     STYLE = {   # 中文虛詞／語氣的代理類別（Ireland 等人的 LSM 英文用虛詞，這裡是華語近似版）

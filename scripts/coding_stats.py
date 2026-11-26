@@ -5,9 +5,9 @@ sample.json: [{id, who, text}]；passA/passB: [{id, code}]，code 為 pos / neg 
 import sys, json
 from math import sqrt
 from collections import Counter
-smp = {r['id']: r for r in json.load(open(sys.argv[1]))}
-A = {r['id']: r['code'] for r in json.load(open(sys.argv[2]))}
-B = {r['id']: r['code'] for r in json.load(open(sys.argv[3]))}
+smp = {r['id']: r for r in json.load(open(sys.argv[1], encoding='utf-8'))}
+A = {r['id']: r['code'] for r in json.load(open(sys.argv[2], encoding='utf-8'))}
+B = {r['id']: r['code'] for r in json.load(open(sys.argv[3], encoding='utf-8'))}
 ids = [i for i in smp if i in A and i in B]
 def wilson(k, n, z=1.96):
     if n == 0: return None
