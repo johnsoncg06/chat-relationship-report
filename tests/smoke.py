@@ -28,5 +28,20 @@ assert 0 <= d['score']['closeness'] <= 100
 assert d['score'].get('experimental') is not None
 assert d.get('forecast') and d['forecast'].get('scenarios'), 'forecast missing: ' + str(d.get('notes'))
 assert len(d['images']) >= 5, d['images']
+# --- 歷史紀錄：選資料夾 → 再分析一次（自動存檔）→ 列表 / 載入 / 比對 / 回測 / 刪除 ---
+import tempfile, os
+def jcall(path, obj=None):
+    return json.loads(call(path, None if obj is None else json.dumps(obj).encode()))
+folder = os.path.join(tempfile.mkdtemp(prefix='chatrel_hist_'), 'data')
+assert jcall('/api/folder', {'path': folder}).get('folder'), 'set folder failed'
+ids = []
+for lab in ('smoke-1', 'smoke-2'):
+    call('/reset', b''); call('/upload?name=smoke.txt', '\n'.join(L).encode('utf-8'))
+    r = json.loads(call('/run', json.dumps({'tz': '8', 'label': lab}).encode())); assert r.get('saved_run'), r.get('notes'); ids.append(r['saved_run']); time.sleep(1.1)
+h = jcall('/api/history'); assert len(h['runs']) == 2 and h['folder'], h
+assert 'evidence' not in jcall('/api/run?id=' + ids[0])['score'], 'evidence must not be stored'
+c = jcall('/api/compare?a=%s&b=%s' % (ids[0], ids[1])); assert c['rows'], c
+assert jcall('/api/run_update', {'id': ids[1], 'label': 'x'}).get('ok')
+assert jcall('/api/run_delete', {'id': ids[0]}).get('ok') and len(jcall('/api/history')['runs']) == 1
 call('/quit', b'')
 print('SMOKE OK closeness=%s' % d['score']['closeness'])

@@ -6,6 +6,7 @@ import os, sys, io, json, glob, shutil, tempfile, secrets, threading, webbrowser
 import argparse, statistics, csv, random, math, re, datetime, collections, functools, xml.sax.saxutils   # noqa：腳本用 runpy 載入，這行讓 PyInstaller 看見它們
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+import store
 
 for _n in ('stdout', 'stderr'):   # Windows 主控台常是 cp1252 / 視窗模式下為 None：避免印中文就崩潰
     _s = getattr(sys, _n, None)
@@ -138,6 +139,9 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(body)
 
+    def _json(self, obj, code=200):
+        self._ok(code, 'application/json', json.dumps(obj, ensure_ascii=False).encode('utf-8'))
+
     def _auth(self):
         if self.path.startswith('/favicon'): self._ok(204, 'image/x-icon', b''); return None
         q = parse_qs(urlparse(self.path).query)
@@ -153,6 +157,18 @@ class H(BaseHTTPRequestHandler):
         if u.path.startswith('/img/'):
             f = os.path.join(WORK, 'out', 'charts', os.path.basename(u.path))
             if os.path.isfile(f): return self._ok(200, 'image/svg+xml' if f.endswith('.svg') else 'image/png', open(f, 'rb').read())
+        if u.path == '/api/history':
+            c = store.load_config()
+            return self._json({'folder': c.get('folder'), 'default_folder': store.default_folder(), 'auto_save': c.get('auto_save', True) if c.get('folder') else False,
+                               'runs': store.list_runs(), 'backtest': store.backtest() if c.get('folder') else None})
+        if u.path == '/api/run':
+            r = store.load_run(q.get('id', [''])[0]); return self._json(r if r else {'error': '找不到這筆紀錄'}, 200 if r else 404)
+        if u.path == '/api/compare':
+            r = store.compare(q.get('a', [''])[0], q.get('b', [''])[0]); return self._json(r if r else {'error': '找不到紀錄'}, 200 if r else 404)
+        if u.path.startswith('/runimg/'):
+            parts = u.path.split('/')
+            f = store.run_image(parts[2], parts[3]) if len(parts) >= 4 else None
+            if f: return self._ok(200, 'image/svg+xml', open(f, 'rb').read())
         if u.path == '/download.zip':
             buf = io.BytesIO(); root = os.path.join(WORK, 'out')
             with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
@@ -178,10 +194,40 @@ class H(BaseHTTPRequestHandler):
             i = len(os.listdir(up)); open(os.path.join(up, f'{i:03d}_{name}'), 'wb').write(body)
             return self._ok(body=b'{}')
         if u.path == '/run':
+            req = json.loads(body or b'{}')
             with LOCK:
-                try: res = pipeline(json.loads(body or b'{}'))
+                try:
+                    res = pipeline(req)
+                    if not res.get('error'):
+                        cfg = store.load_config()
+                        if cfg.get('folder') and cfg.get('auto_save', True):
+                            try: res['saved_run'] = store.save_run(os.path.join(WORK, 'out'), res, (req.get('label') or '').strip()[:80])
+                            except Exception as e: res.setdefault('notes', []).append('歷史紀錄儲存失敗：' + str(e)[:120])
                 except Exception: res = {'error': '執行失敗：' + traceback.format_exc(limit=3)}
             return self._ok(body=json.dumps(res, ensure_ascii=False).encode())
+        if u.path.startswith('/api/'):
+            try: req = json.loads(body or b'{}')
+            except Exception: req = {}
+            if u.path == '/api/pick_folder':
+                p = store.pick_folder_dialog(); return self._json({'path': p})
+            if u.path == '/api/folder':
+                try: return self._json({'folder': store.set_folder(req.get('path') or '')})
+                except Exception as e: return self._json({'error': '無法使用這個資料夾：' + str(e)[:150]}, 400)
+            if u.path == '/api/auto_save':
+                c = store.load_config(); c['auto_save'] = bool(req.get('on')); store.save_config(c); return self._json({'ok': True})
+            if u.path == '/api/run_update':
+                ok = store.update_run(req.get('id', ''), req.get('label'), req.get('actual_status'), bool(req.get('clear_status')))
+                return self._json({'ok': ok}, 200 if ok else 400)
+            if u.path == '/api/run_delete':
+                ok = store.delete_run(req.get('id', '')); return self._json({'ok': ok}, 200 if ok else 404)
+            if u.path == '/api/save_now':
+                if not store.load_config().get('folder'): return self._json({'error': '還沒有選儲存資料夾'}, 400)
+                o = os.path.join(WORK, 'out')
+                if not os.path.isfile(os.path.join(o, 'score.json')): return self._json({'error': '還沒有分析結果可以儲存'}, 400)
+                try:
+                    fc = json.load(open(os.path.join(o, 'forecast.json'), encoding='utf-8')) if os.path.isfile(os.path.join(o, 'forecast.json')) else None
+                    return self._json({'id': store.save_run(o, {'forecast': fc}, (req.get('label') or '').strip()[:80])})
+                except Exception as e: return self._json({'error': str(e)[:150]}, 500)
         self._ok(404, 'text/plain', b'not found')
 
 

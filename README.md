@@ -37,6 +37,8 @@ python app.py        # macOS 也可雙擊 run.command，Windows 雙擊 run.bat
 
 App 會開成獨立視窗（用系統上的 Edge 或 Chrome；找不到就用預設瀏覽器），畫面只有本機能連。關掉視窗約 2 分鐘後會自動結束，也可按側邊欄的「結束程式」。
 
+**歷史紀錄**：可指定一個資料夾存放每次的分析結果（不存聊天原文），之後做前後比對，並用過去的預測檢驗準不準。用法見[使用說明書](docs/MANUAL.md#5-歷史紀錄儲存前後比對回測)。
+
 ## 計算概要
 
 一句話：把雙方的互動拆成可計數的指標（回覆速度、訊息量、話語長度、晚安、情感詞、沉默等），各自映射到 0–100 後加權，得到**親密度**與**浪漫訊號**，再依門檻落到關係區間。未來 8 週用趨勢模擬加上手設權重的 softmax 得到「相對可能性」。完整公式見[算法說明](docs/ALGORITHM.md)。
@@ -60,7 +62,7 @@ App 會開成獨立視窗（用系統上的 Edge 或 Chrome；找不到就用預
 - 已用一份真實的 LINE 匯出驗證解析，但其他語系、Android 版與舊版格式可能仍需調整。
 
 ## 專案結構
-- `app.py`：本機伺服器與視窗啟動；`web/index.html`：介面（深色、側邊欄分頁）
+- `app.py`：本機伺服器與視窗啟動；`store.py`：歷史紀錄（儲存、比對、回測）；`web/index.html`：介面（深色、側邊欄分頁）
 - `installer.iss`：Windows 安裝程式（Inno Setup）；macOS 的 .dmg 由 workflow 用 hdiutil 產生
 - `scripts/`：chat_stats / score_intimacy / chat_charts / forecast / chat_dashboard（分析核心），`_lite.py`（統計函式）、`_svg.py`（繪圖）；anonymize / coding_stats 是給 LLM 解讀用的輔助工具，App 內未使用
 - `docs/`：使用說明書與算法說明
