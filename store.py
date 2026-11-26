@@ -30,6 +30,8 @@ def load_config():
 def save_config(c):
     p = config_path(); os.makedirs(os.path.dirname(p), exist_ok=True)
     json.dump(c, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    try: os.chmod(p, 0o600)   # 內含 API Key：僅本人可讀（Windows 無效，盡力而為）
+    except Exception: pass
 
 
 def runs_dir(folder=None):

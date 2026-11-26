@@ -88,6 +88,8 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
 .wc.w2{grid-column:1/-1}.g1{background:linear-gradient(135deg,#1ed760,#0d6b36)}.g2{background:linear-gradient(135deg,#a78bfa,#4b2fa6)}.g3{background:linear-gradient(135deg,#f573a0,#a21d52)}.g4{background:linear-gradient(135deg,#ffa42b,#b3510a)}.g5{background:linear-gradient(135deg,#509bf5,#1b4e9e)}.g6{background:linear-gradient(135deg,#ffd23f,#8a6a00);color:#1a1300}
 .wc .mb{height:8px;border-radius:8px;background:rgba(255,255,255,.28);margin:6px 0;overflow:hidden}.wc .mb i{display:block;height:100%;background:#fff;border-radius:8px}
 .mini{background:var(--raise);border:0;border-radius:500px;padding:5px 14px;font-weight:700;font-size:12.5px;color:#fff;cursor:pointer}.mini:hover{background:var(--hover)}
+.qa{display:flex;flex-direction:column;gap:10px;margin:14px 0}.qa .m{max-width:760px;padding:12px 16px;border-radius:8px;line-height:1.65;white-space:pre-wrap}.qa .u{align-self:flex-end;background:var(--g);color:#000;font-weight:600}.qa .a{align-self:flex-start;background:var(--raise)}.qa .e{align-self:flex-start;background:#3a1d22;color:#ff9aa5}
+.askbar{display:flex;gap:10px;margin-top:8px}.askbar input{flex:1}.sug{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.sug button{border-radius:500px;padding:6px 14px;background:var(--raise);font-weight:600;font-size:13px}.sug button:hover{background:var(--hover)}
 </style></head>
 <body>
 <aside>
@@ -100,6 +102,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
   <button data-v="chart" disabled><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg><span>圖表</span></button>
   <button data-v="proj"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/></svg><span>多對象對比</span></button>
   <button data-v="me"><svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12zm0 2.2c-3 0-9 1.5-9 4.5V21h18v-2.3c0-3-6-4.5-9-4.5z"/></svg><span>個人檔案</span></button>
+  <button data-v="ask"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H8l-4 4V4zm4 4v2h8V8H8zm0 3v2h5v-2H8z"/></svg><span>問答</span></button>
   <button data-v="hist"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.1 5l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2V8z"/></svg><span>歷史紀錄</span></button>
   <button data-v="exp" disabled><svg viewBox="0 0 24 24"><path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 3.6 3.6V3zM5 18h14v3H5z"/></svg><span>匯出</span></button>
  </nav>
@@ -138,6 +141,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
  <section class="view" id="v-chart"></section>
  <section class="view" id="v-proj"></section>
  <section class="view" id="v-me"></section>
+ <section class="view" id="v-ask"></section>
  <section class="view" id="v-hist"></section>
  <section class="view" id="v-exp"></section>
 </main>
@@ -149,13 +153,34 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 setInterval(()=>api('/ping').catch(()=>{}),4000);api('/ping');
 function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('main').scrollTop=0}
-$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(b.dataset.v);if(b.dataset.v==='hist')loadHist();if(b.dataset.v==='proj')loadProj();if(b.dataset.v==='me')loadMe()}};
+$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(b.dataset.v);if(b.dataset.v==='hist')loadHist();if(b.dataset.v==='proj')loadProj();if(b.dataset.v==='me')loadMe();if(b.dataset.v==='ask')loadAsk()}};
+
+let ASKH=[];
+async function loadAsk(){const el=$('v-ask');const c=await(await api('/api/ask_cfg')).json();
+ const keyHtml=c.has_key?'<p class="sub">已設定 Key：<b>'+esc(c.masked)+'</b>　<button class="mini" id="akchg">更換</button> <button class="mini" id="akdel">移除</button></p>'
+  :'<div class="grp"><b>解鎖問答：貼上你自己的 Anthropic API Key</b><p class="sub" style="margin:6px 0 10px">Key 只存在這台電腦的設定檔，不會上傳到別處；問答的費用由你的 API 帳戶負擔。到 console.anthropic.com 建立 Key。</p><div class="askbar"><input id="akin" type="password" placeholder="sk-ant-…" autocomplete="off"><button class="go" id="aksave" style="padding:10px 26px">解鎖</button></div></div>';
+ const sel='<label class="sub">模型　<select id="akmodel">'+c.models.map(m=>'<option'+(m===c.model?' selected':'')+'>'+m+'</option>').join('')+'</select></label>';
+ el.innerHTML='<div class="hero plain"><h1>問答</h1><p class="sub">用自然語言問你的分析結果，例如「為什麼分數偏低？」「接下來該怎麼做？」</p></div>'+keyHtml+
+ '<div class="alert" style="margin:10px 0"><b>隱私：</b>只會送出已算好的統計數字、分數、預測與提醒（名字換成「我／對方」，證據原文片段已移除），<b>不會送聊天原文</b>。數字由程式計算，AI 只負責解讀，可能會出錯，請當參考。</div>'+
+ (c.has_key?sel:'')+
+ (c.has_key?(c.has_result?'<div class="sug">'+['這段關係目前是什麼狀態？','分數最拖累的是哪一項？','預測可信嗎？有哪些限制？','我該怎麼做比較好？'].map(q=>'<button>'+q+'</button>').join('')+'</div>':'<div class="empty"><b>還沒有分析結果</b>先到「開始分析」匯入聊天記錄，再回來提問。</div>'):'')+
+ '<div class="qa" id="qa"></div>'+(c.has_key&&c.has_result?'<div class="askbar"><input id="aq" placeholder="輸入問題，按 Enter 送出"><button class="go" id="asend" style="padding:10px 26px">送出</button></div>':'');
+ const sv=$('aksave');if(sv)sv.onclick=async()=>{const r=await api('/api/ask_cfg',{method:'POST',body:JSON.stringify({api_key:$('akin').value})});const j=await r.json();if(!r.ok)alert(j.error);else loadAsk()};
+ if($('akchg'))$('akchg').onclick=async()=>{await api('/api/ask_cfg',{method:'POST',body:JSON.stringify({api_key:''})});loadAsk()};
+ if($('akdel'))$('akdel').onclick=$('akchg').onclick;
+ if($('akmodel'))$('akmodel').onchange=()=>api('/api/ask_cfg',{method:'POST',body:JSON.stringify({model:$('akmodel').value})});
+ const qa=$('qa');ASKH.forEach(m=>qa.insertAdjacentHTML('beforeend','<div class="m '+(m.role==='user'?'u':'a')+'">'+esc(m.content)+'</div>'));
+ const go=async q=>{q=(q||'').trim();if(!q)return;$('aq').value='';qa.insertAdjacentHTML('beforeend','<div class="m u">'+esc(q)+'</div><div class="m a" id="pend"><span class="spin"></span> 思考中…</div>');
+  const r=await api('/api/ask',{method:'POST',body:JSON.stringify({question:q,history:ASKH})});const j=await r.json();$('pend').remove();
+  if(!r.ok){qa.insertAdjacentHTML('beforeend','<div class="m e">'+esc(j.error||'失敗')+'</div>');return}
+  ASKH.push({role:'user',content:q},{role:'assistant',content:j.answer});qa.insertAdjacentHTML('beforeend','<div class="m a">'+esc(j.answer)+'</div>')};
+ if($('aq')){$('aq').onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing)go($('aq').value)};$('asend').onclick=()=>go($('aq').value);document.querySelectorAll('.sug button').forEach(b=>b.onclick=()=>go(b.textContent))}}
 $('quit').onclick=async()=>{if(confirm('結束程式？分析結果會一併清除。')){await api('/quit',{method:'POST'}).catch(()=>{});document.body.innerHTML='<div class="empty" style="width:100%"><b>已結束</b>可以關閉這個視窗。</div>'}};
 $('drop').onclick=()=>$('file').click();
 ['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.add('on')}));
 ['dragleave','drop'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.remove('on')}));
 $('drop').addEventListener('drop',ev=>send(ev.dataTransfer.files));$('file').onchange=ev=>send(ev.target.files);
-async function send(fs){await api('/reset',{method:'POST'});uploaded=[];$('flist').innerHTML='<span class="status"><span class="spin"></span>讀取中…</span>';
+async function send(fs){ASKH=[];await api('/reset',{method:'POST'});uploaded=[];$('flist').innerHTML='<span class="status"><span class="spin"></span>讀取中…</span>';
  for(const f of fs){const r=await api('/upload?name='+encodeURIComponent(f.name),{method:'POST',body:await f.arrayBuffer()});if(r.ok)uploaded.push(f.name)}
  $('flist').innerHTML=uploaded.map(n=>'<span class="chip">'+esc(n)+'</span>').join('');$('go').disabled=!uploaded.length}
 $('go').onclick=async()=>{$('go').disabled=true;$('status').innerHTML='<span class="spin"></span>分析中，大型聊天可能要一分鐘';

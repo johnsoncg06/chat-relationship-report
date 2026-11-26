@@ -114,5 +114,27 @@ pp = jcall('/api/personal'); assert pp['n_used'] == 1 and pp['skipped'] >= 1 and
 assert '渣' not in json.dumps(pp['archetype'], ensure_ascii=False), 'no condemning labels'
 assert jcall('/api/project_rename', {'id': pb, 'name': '改名'}).get('ok')
 assert jcall('/api/project_delete', {'id': pb}).get('ok') and len(jcall('/api/projects')['unassigned']) == 1, 'delete must keep runs as unassigned'
+
+# --- 問答（自帶 API Key）：用本機假伺服器驗證，不連外網
+import threading, http.server
+SEEN = {}
+class _Mock(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_POST(self):
+        b = json.loads(self.rfile.read(int(self.headers['Content-Length']))); SEEN['key'] = self.headers.get('x-api-key'); SEEN['body'] = json.dumps(b, ensure_ascii=False)
+        out = json.dumps({'content': [{'type': 'text', 'text': '分數是 72'}], 'usage': {'input_tokens': 1, 'output_tokens': 1}}).encode()
+        self.send_response(200); self.send_header('Content-Type', 'application/json'); self.send_header('Content-Length', str(len(out))); self.end_headers(); self.wfile.write(out)
+_srv = http.server.HTTPServer(('127.0.0.1', 8798), _Mock); threading.Thread(target=_srv.serve_forever, daemon=True).start()
+ac = jcall('/api/ask_cfg'); assert ac['tls'] and not ac['has_key'] and ac['has_result'], ac
+try: jcall('/api/ask', {'question': 'hi'}); raise SystemExit('ask without key must fail')
+except urllib.error.HTTPError as e: assert e.code == 400
+try: jcall('/api/ask_cfg', {'api_key': 'bad'}); raise SystemExit('bad key must be rejected')
+except urllib.error.HTTPError as e: assert e.code == 400
+KEY = 'sk-ant-' + 'x' * 30
+assert jcall('/api/ask_cfg', {'api_key': KEY}).get('ok') and jcall('/api/ask_cfg')['has_key']
+ans = jcall('/api/ask', {'question': '分數是多少？', 'history': []}); assert ans['answer'] == '分數是 72' and SEEN['key'] == KEY
+assert '分數是多少' in SEEN['body'] and 'closeness' in SEEN['body'], 'context must carry computed numbers'
+assert '小明' not in SEEN['body'] and '小華' not in SEEN['body'], 'names must be pseudonymised before sending'
+assert jcall('/api/ask_cfg', {'api_key': ''}).get('ok') and not jcall('/api/ask_cfg')['has_key']
 call('/quit', b'')
 print('SMOKE OK closeness=%s' % d['score']['closeness'])

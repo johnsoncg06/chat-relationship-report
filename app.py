@@ -6,7 +6,7 @@ import os, sys, io, json, glob, shutil, tempfile, secrets, threading, webbrowser
 import argparse, statistics, csv, random, math, re, datetime, collections, functools, xml.sax.saxutils   # noqa：腳本用 runpy 載入，這行讓 PyInstaller 看見它們
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-import store
+import store, llm
 
 for _n in ('stdout', 'stderr'):   # Windows 主控台常是 cp1252 / 視窗模式下為 None：避免印中文就崩潰
     _s = getattr(sys, _n, None)
@@ -176,6 +176,12 @@ class H(BaseHTTPRequestHandler):
             c = store.load_config()
             return self._json({'folder': c.get('folder'), 'default_folder': store.default_folder(), 'auto_save': c.get('auto_save', True) if c.get('folder') else False,
                                'runs': store.list_runs(), 'backtest': store.backtest() if c.get('folder') else None})
+        if u.path == '/api/ask_cfg':
+            c = store.load_config(); k = c.get('api_key', '')
+            try: import ssl; tls = True   # 打包版必須帶 ssl，否則連不上 HTTPS API
+            except Exception: tls = False
+            return self._json({'tls': tls, 'has_key': bool(k), 'masked': llm.mask(k), 'model': c.get('api_model') or llm.DEFAULT_MODEL, 'models': llm.MODELS,
+                               'has_result': os.path.isfile(os.path.join(WORK, 'out', 'score.json'))})
         if u.path == '/api/projects':
             if not store.load_config().get('folder'): return self._json({'folder': None, 'projects': [], 'unassigned': []})
             return self._json(dict(store.projects_overview(), folder=True))
@@ -234,6 +240,26 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/folder':
                 try: return self._json({'folder': store.set_folder(req.get('path') or '')})
                 except Exception as e: return self._json({'error': '無法使用這個資料夾：' + str(e)[:150]}, 400)
+            if u.path == '/api/ask_cfg':
+                c = store.load_config()
+                if 'api_key' in req:
+                    k = (req.get('api_key') or '').strip()
+                    if k and not re.match(r'^sk-[\w-]{20,}$', k): return self._json({'error': 'Key 格式不對（應以 sk- 開頭）'}, 400)
+                    if k: c['api_key'] = k
+                    else: c.pop('api_key', None)
+                if req.get('model'): c['api_model'] = str(req['model'])[:60]
+                store.save_config(c); return self._json({'ok': True, 'masked': llm.mask(c.get('api_key', ''))})
+            if u.path == '/api/ask':
+                c = store.load_config(); k = c.get('api_key', '')
+                if not k: return self._json({'error': '還沒設定 API Key'}, 400)
+                q = (req.get('question') or '').strip()
+                if not q: return self._json({'error': '請輸入問題'}, 400)
+                bc = llm.build_context(os.path.join(WORK, 'out'))
+                if not bc: return self._json({'error': '還沒有分析結果，請先在「開始分析」匯入聊天記錄'}, 400)
+                try:
+                    ans, use = llm.ask(k, c.get('api_model') or llm.DEFAULT_MODEL, bc[0], q, req.get('history'))
+                    return self._json({'answer': ans, 'usage': use, 'sent_chars': len(bc[0])})
+                except RuntimeError as e: return self._json({'error': str(e)}, 502)
             if u.path == '/api/auto_save':
                 c = store.load_config(); c['auto_save'] = bool(req.get('on')); store.save_config(c); return self._json({'ok': True})
             if u.path == '/api/run_update':
