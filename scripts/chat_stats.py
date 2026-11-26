@@ -13,17 +13,20 @@ LINE_KIND = [('sticker', r'^\[?(貼圖|Sticker)\]?$'), ('photo', r'^\[?(照片|P
              ('voice', r'^\[?(語音訊息|Voice message)\]?$'), ('file', r'^\[?(檔案|File)\]?$'),
              ('call', r'^☎|通話時間|未接來電|Call duration|Missed call'), ('unsent', r'收回了訊息|unsent a message|訊息已收回')]
 LEX = {
- 'goodnight': r'晚安|good ?night|\bgn\b|早點睡|去睡了|先睡了',
+ 'goodnight': r'^.{0,4}(晚安|good ?night|\bgn\b|早點睡|去睡了|先睡了).{0,4}$',   # 只算短訊息，避免把「討論早安晚安」算成道晚安
  'miss_you': r'想你|想妳|miss you|好想見',
  'love_you': r'愛你|愛妳|love you|喜歡你|喜歡妳',
  'sorry': r'抱歉|對不起|不好意思|sorry|我的錯',
- 'laugh': r'哈哈|XD|www|笑死|lol|😂|🤣',
+ 'laugh': r'哈哈|XD|www|笑死|好笑|笑爛|笑爆|笑到|😂|🤣',   # 不含 lol：常指 League of Legends
  'pet_name': r'寶貝|寶寶|親愛的|老公|老婆|\bbb\b|babe|honey|甜心',
  'heart': r'❤|💕|💖|😘|🥰|💗|😍',
 }
 NEG = re.compile(r'(不|沒|別|才不|不會|不要|不想)\s*$')
 
+EMOJI_ONLY = re.compile(r'^(\s*\((?:[^()]|\([^()]*\))*\))+\s*$')   # LINE 匯出的表情符號只剩 (emoji)、(thumbs up (brown)) 這類佔位字
+
 def classify(text):
+    if EMOJI_ONLY.match(text.strip()): return 'emoji'
     for k, pat in LINE_KIND:
         if re.search(pat, text.strip(), re.I): return k
     return 'text'
