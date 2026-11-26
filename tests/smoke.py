@@ -15,7 +15,7 @@ for d in range(60):
     day = 1 + d; mo = 9 + (day - 1) // 30; dd = (day - 1) % 30 + 1
     L.append(f'2026/{mo:02d}/{dd:02d}（四）')
     for i in range(random.randint(25, 60)):
-        L.append(f'{9 + i // 6:02d}:{(i * 9) % 60:02d}\t{"小明" if i % 2 == 0 else "小華"}\t{random.choice(["晚安", "哈哈哈", "你在幹嘛", "我們去吃飯", "好啊", "想你"])}')
+        L.append(f'{9 + i // 6:02d}:{(i * 9) % 60:02d}\t{"小明" if i % 2 == 0 else "小華"}\t{random.choice(["晚安", "哈哈哈", "你在幹嘛", "我們去吃飯", "好啊", "想你", "[貼圖]"])}')
     L.append('')
 for _ in range(40):   # 連線稍慢時多試幾次
     try: call('/ping'); break
@@ -26,6 +26,11 @@ assert not d.get('error'), d
 assert d['stats']['total'] > 1000, d['stats']['total']
 assert 0 <= d['score']['closeness'] <= 100
 assert d['score'].get('experimental') is not None
+sc = d['score']; assert sc.get('profile') == 'tw' and sc.get('weights') and sc.get('evidence_levels'), 'profile fields missing'
+assert set(sc['closeness_by_profile']) == {'base', 'tw'} and '表達量' in sc['weights']
+assert all(v in ('未驗證', '東亞參考', '西方參考（實驗性）', '台灣驗證') for v in sc['evidence_levels'].values())
+assert any(k.get('sticker') for k in d['stats']['kinds'].values()), 'sticker kind not counted'
+assert 'calls' in d['stats']
 assert d.get('forecast') and d['forecast'].get('scenarios'), 'forecast missing: ' + str(d.get('notes'))
 assert len(d['images']) >= 5, d['images']
 # --- 歷史紀錄：選資料夾 → 再分析一次（自動存檔）→ 列表 / 載入 / 比對 / 回測 / 刪除 ---

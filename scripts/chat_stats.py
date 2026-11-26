@@ -138,7 +138,10 @@ def main():
            'kinds': {p: dict(Counter(m['kind'] for m in M if m['who'] == p)) for p in P},
            'unsent': dict(Counter(m['who'] for m in ALL if m['kind'] == 'unsent')),
            'reactions_given': dict(Counter(m['who'] for m in R)),
-           'shares_sent': dict(Counter(m['who'] for m in M if m['kind'] == 'share'))}
+           'shares_sent': dict(Counter(m['who'] for m in M if m['kind'] == 'share')),
+           # 通話只當事實呈現、不計分：一通電話可能是雙方都有的深聊，也可能是未接，單看次數方向不明
+           'calls': {p: {'answered': sum(1 for m in M if m['who'] == p and m['kind'] == 'call' and not re.search(r'未接|[Mm]issed', m['text'])),
+                         'missed': sum(1 for m in M if m['who'] == p and m['kind'] == 'call' and re.search(r'未接|[Mm]issed', m['text']))} for p in P}}
     T = [m for m in M if m['kind'] == 'text']   # 文字統計只看純文字
     if a.export_csv:   # 逐則明細（不含文字內容），給 pandas / BI 使用
         import csv

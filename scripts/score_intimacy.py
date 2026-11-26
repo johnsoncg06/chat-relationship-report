@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """用法: python3 score_intimacy.py stats.json  -> 親密度/浪漫訊號/五維度/區間/信心"""
-import json, sys, statistics as st
+import json, sys, os, statistics as st
 d = json.load(open(sys.argv[1], encoding='utf-8'))
 if 'error' in d: print(json.dumps(d, ensure_ascii=False)); sys.exit()
 ci = d['closeness_inputs']
@@ -9,20 +9,37 @@ def lin(x, lo, hi):  # 線性映射到 0-100（錨點為經驗設定，非常模
 lat = list(d['reply_latency_min_median'].values()) or [120]
 rate = lambda k: st.mean(d['per_100_msgs'][p].get(k, 0) for p in d['per_100_msgs']) if 'per_100_msgs' in d else 0
 avg_len = st.mean(d['avg_len_chars'].values()) if d['avg_len_chars'] else 0
-sub = {
- '聯絡頻率': (12, lin(ci['active_day_ratio'], .1, .9)),   # 研究顯示「怎麼傳」比「傳多少」更能預測關係滿意度，頻率只當輔助、權重已降低
- '互動密度': (15, lin(ci['msgs_per_active_day'], 5, 80)),
- '持續性':   (10, 100 - lin(ci['longest_silence_days'], 2, 30)),
- '晚安儀式': (10, lin(ci['goodnight_day_ratio'], 0, .5)),
- '深夜互動': (10, lin(ci['late_night_share'], 0, .08)),
- '話語長度': (15, lin(avg_len, 3, 25)),
-}
-RS = d.get('rhythm_similarity')
-if RS: sub['節奏相似'] = (13, RS['score'])   # 雙方長度、連發、活躍時段的相似度
 LAT_OK = d.get('reply_latency_reliable', True)
-if LAT_OK: sub['回覆速度'] = (15, 100 - lin(st.median(lat), 5, 120))
-wsum = sum(w for w, v in sub.values())
-closeness = sum(w * v for w, v in sub.values()) / wsum   # 回覆速度不可採用時，其餘權重重新正規化
+# 非文字表達：貼圖、語音訊息、照片占全部訊息的比例（雙方平均）。LINE 貼圖在台灣用量高，純看文字長度會低估這類互動。
+# 設計成「替代」而不是「加分」：表達量 = max(文字長度分, 非文字比例分)，所以不用貼圖的人不會被扣分，只有以貼圖代替文字的人不被低估。
+NONTEXT = ('sticker', 'voice', 'photo')
+nt_share = st.mean(sum(d['kinds'].get(p, {}).get(k, 0) for k in NONTEXT) / max(1, d['people'][p]) for p in d['people']) if d.get('kinds') else 0
+RS = d.get('rhythm_similarity')
+raw = {   # 子分數 0-100；映射的上下限都是經驗設定，沒有用台灣資料校準
+ '聯絡頻率': lin(ci['active_day_ratio'], .1, .9),   # 研究顯示「怎麼傳」比「傳多少」更能預測關係滿意度，頻率只當輔助
+ '互動密度': lin(ci['msgs_per_active_day'], 5, 80),
+ '持續性':   100 - lin(ci['longest_silence_days'], 2, 30),
+ '晚安儀式': lin(ci['goodnight_day_ratio'], 0, .5),
+ '深夜互動': lin(ci['late_night_share'], 0, .08),
+ '話語長度': lin(avg_len, 3, 25),
+}
+raw['表達量'] = max(raw['話語長度'], lin(nt_share, 0, .35))
+if RS: raw['節奏相似'] = RS['score']   # 雙方長度、連發、活躍時段的相似度（實驗性指標，西方參考）
+if LAT_OK: raw['回覆速度'] = 100 - lin(st.median(lat), 5, 120)
+# 權重設定檔：base = 先前版本；tw = 依台灣習慣的經驗微調（貼圖用量高 → 話語長度改為「表達量」，貼圖可替代文字；回覆速度的「慢」門檻因人而異 → 權重 15 降為 12）
+# 重要：tw 的調整依據是東亞（台、日、港）的問卷／實驗與使用習慣，不是用台灣聊天紀錄加關係結果校準出來的，所以仍標為「未驗證」。
+PROFILES = {
+ 'base': {'聯絡頻率': 12, '互動密度': 15, '持續性': 10, '晚安儀式': 10, '深夜互動': 10, '話語長度': 15, '節奏相似': 13, '回覆速度': 15},
+ 'tw':   {'聯絡頻率': 12, '互動密度': 15, '持續性': 10, '晚安儀式': 10, '深夜互動': 10, '表達量': 15, '節奏相似': 13, '回覆速度': 12},
+}
+TIER = {'表達量': '東亞參考', '回覆速度': '東亞參考', '節奏相似': '西方參考（實驗性）'}   # 其餘一律「未驗證」；目前沒有任何指標達到「台灣驗證」
+PROFILE = next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == '--profile' and i + 1 < len(sys.argv)), os.environ.get('CHATREL_PROFILE', 'tw'))
+if PROFILE not in PROFILES: PROFILE = 'tw'
+def closeness_of(name):
+    ws = {k: w for k, w in PROFILES[name].items() if k in raw}   # 缺資料（如回覆速度不可採用）時，其餘權重重新正規化
+    return sum(w * raw[k] for k, w in ws.items()) / sum(ws.values()), ws
+closeness, used_w = closeness_of(PROFILE)
+sub = {k: (w, raw[k]) for k, w in used_w.items()}
 romantic_rate = rate('miss_you') + rate('love_you') + rate('pet_name') + .5 * rate('heart')
 ini = list(d['initiations'].values()); share = max(ini) / sum(ini) if ini else .5
 rom = {
@@ -53,7 +70,7 @@ if not d['is_group']:
     dims = {
      '互惠': mean([balance(d['people']), balance(d['initiations']), balance(d['conversation_enders']), bal_rate(d['bids_by_sender'])]),
      '回應': mean([(100 - lin(st.median(lat), 5, 120)) if LAT_OK else None, lin(st.mean(bid_rates), .3, .95) if bid_rates else None, 100 - lin(st.mean(over2), .05, .4)]),
-     '投入': mean([lin(ci['msgs_per_active_day'], 5, 80), lin(avg_len, 3, 25), lin(qrate, 2, 15)]),
+     '投入': mean([lin(ci['msgs_per_active_day'], 5, 80), raw['表達量'] if PROFILE == 'tw' else raw['話語長度'], lin(qrate, 2, 15)]),
      '溫度': .6 * warm + .4 * lin(ci['goodnight_day_ratio'], 0, .5),
      '穩定': mean([lin(ci['active_day_ratio'], .1, .9), 100 - lin(ci['longest_silence_days'], 2, 30), 100 - lin(d.get('weekly_volume_cv') or 0, .3, 1.2)]),
     }
@@ -82,4 +99,7 @@ print(json.dumps({'closeness': round(closeness), 'romantic_signal': round(romant
   'changepoints': d.get('changepoints'),
   'experimental': {'style_matching': d.get('style_matching'), 'we_talk': d.get('we_talk'), 'rhythm_similarity': RS, 'note': '實驗性：研究多為英語情侶；華語效度未驗證，不納入親密度，只供參考。'},
   'structured_chat': d.get('structured_chat'), 'evidence': d.get('evidence'), 'sub_closeness': {k: round(v) for k, (w, v) in sub.items()},
+  'profile': PROFILE, 'weights': used_w, 'evidence_levels': {k: TIER.get(k, '未驗證') for k in used_w},
+  'closeness_by_profile': {n: round(closeness_of(n)[0]) for n in PROFILES},
+  'weights_note': '權重為經驗設定；tw 版依東亞（台、日、港）使用習慣微調，沒有任何指標經台灣聊天紀錄加關係結果驗證。',
   'sub_romantic': {k: round(v) for k, (w, v) in rom.items()}}, ensure_ascii=False, indent=1))
