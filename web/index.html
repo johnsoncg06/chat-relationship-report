@@ -70,7 +70,7 @@ ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);bord
 .spin{width:16px;height:16px;border:2px solid #444;border-top-color:var(--g);border-radius:50%;display:inline-block;vertical-align:-3px;margin-right:8px;animation:r 0.8s linear infinite}@keyframes r{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:760px){body{flex-direction:column-reverse}aside{width:auto;flex-direction:row;margin:0 8px 8px;padding:6px;border-radius:10px;overflow-x:auto}.brand,.priv,.sp,.quit span{display:none}nav{flex-direction:row}nav button span{display:none}.hero{flex-direction:column;align-items:flex-start;padding:28px 20px 20px}.body{padding:16px 20px 40px}}
-.hist td,.hist th{padding:8px 10px;font-size:13px;white-space:nowrap}.hist tr.row td:first-child{width:auto;color:inherit}.hist td:nth-child(6){white-space:normal}.hist select,.hist input.lb2{background:var(--raise);color:#fff;border:1px solid #333;border-radius:6px;padding:4px 6px;font:inherit;width:auto}.mini{background:var(--raise);border:1px solid #333;border-radius:500px;padding:5px 14px;font-size:12.5px;font-weight:700}.mini:hover{border-color:#fff}.mini.del:hover{border-color:var(--bad);color:var(--bad)}.up{color:var(--g)}.dn{color:var(--bad)}.grp{background:var(--raise);border-radius:10px;padding:16px 18px;margin:14px 0}details.ev{border:1px solid var(--line,#2a2a2a);border-radius:8px;padding:8px 12px;margin:6px 0}details.ev summary{cursor:pointer}.evl{font-size:13px;color:var(--sub,#b3b3b3);padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}.evchip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line,#ccc)}.ev-ea{background:#e6f0ff}.ev-w{background:#f3ecff}.ev-u{background:#f2f2f2;color:#666}.ev-tw{background:#e3f6e8}
+.hist td,.hist th{padding:8px 10px;font-size:13px;white-space:nowrap}.hist tr.row td:first-child{width:auto;color:inherit}.cmp td,.cmp th{white-space:normal;vertical-align:top;min-width:150px}.cmp td:first-child,.cmp th:first-child{min-width:96px;white-space:nowrap}.hist td:nth-child(6){white-space:normal}.hist select,.hist input.lb2{background:var(--raise);color:#fff;border:1px solid #333;border-radius:6px;padding:4px 6px;font:inherit;width:auto}.mini{background:var(--raise);border:1px solid #333;border-radius:500px;padding:5px 14px;font-size:12.5px;font-weight:700}.mini:hover{border-color:#fff}.mini.del:hover{border-color:var(--bad);color:var(--bad)}.up{color:var(--g)}.dn{color:var(--bad)}.grp{background:var(--raise);border-radius:10px;padding:16px 18px;margin:14px 0}details.ev{border:1px solid var(--line,#2a2a2a);border-radius:8px;padding:8px 12px;margin:6px 0}details.ev summary{cursor:pointer}.evl{font-size:13px;color:var(--sub,#b3b3b3);padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}.evchip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line,#ccc)}.ev-ea{background:#e6f0ff}.ev-w{background:#f3ecff}.ev-u{background:#f2f2f2;color:#666}.ev-tw{background:#e3f6e8}
 select{width:100%;background:var(--raise);border:1px solid transparent;border-radius:6px;padding:11px 12px;color:#fff;font:inherit}select:hover{border-color:#444}select:focus{outline:none;border-color:var(--g)}p.sub b{font-size:inherit;color:#fff}
 .c-cool{background:#3a1c20;color:#ffc4ca}.c-warm{background:#143222;color:#9ef0b8}.c-flat{background:#262626;color:#aaa}.c-na{background:#262626;color:#777}
 .tbl tr.row td:first-child{width:auto;color:inherit}.tbl td,.tbl th{text-align:left;padding:8px 10px;font-size:13.5px;vertical-align:top}
@@ -83,6 +83,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
   <button data-v="over" disabled><svg viewBox="0 0 24 24"><path d="M4 13h4v7H4zm6-9h4v16h-4zm6 5h4v11h-4z"/></svg><span>總覽</span></button>
   <button data-v="fore" disabled><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8v4h2V4h-7v2h4l-7 7-4-4-8 8z"/></svg><span>未來預測</span></button>
   <button data-v="chart" disabled><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg><span>圖表</span></button>
+  <button data-v="proj"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/></svg><span>多對象對比</span></button>
   <button data-v="hist"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.1 5l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2V8z"/></svg><span>歷史紀錄</span></button>
   <button data-v="exp" disabled><svg viewBox="0 0 24 24"><path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 3.6 3.6V3zM5 18h14v3H5z"/></svg><span>匯出</span></button>
  </nav>
@@ -106,6 +107,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
     <div><label for="until">到（不含當天）</label><input type="date" id="until"></div>
     <div><label for="tz">時區（台灣是 8）</label><input id="tz" value="8"></div>
     <div><label for="c_met">怎麼認識的（選填）</label><select id="c_met"><option value="">不指定</option><option value="online_blind_date">線上盲約／配對活動</option><option value="street">搭訕</option><option value="matchmaking">相親</option><option value="family">家人介紹</option><option value="friend">朋友介紹</option><option value="was_friend">原本就是朋友</option><option value="new">剛認識（同學、活動等自然認識）</option></select></div><div><label for="c_stage">見面進度（選填）</label><select id="c_stage"><option value="">不指定</option><option value="not_met_no_sns">還沒見面，也沒交換其他社群帳號</option><option value="not_met_sns">還沒見面，但已交換社群帳號</option><option value="met">已經見面</option></select></div><div><label for="c_br">感情狀態（選填）</label><select id="c_br"><option value="">不指定</option><option value="one">有一方剛失戀</option><option value="both">兩方都剛失戀</option></select></div>
+    <div><label for="proj">歸到哪個對象（專案）</label><select id="proj"><option value="">自動（同一組名字會歸到原本的對象）</option></select></div>
     <div><label for="label">這次的備註（選填）</label><input id="label" placeholder="例如：期中考前"></div>
    </div>
    <h2>儲存位置</h2>
@@ -117,6 +119,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
  <section class="view" id="v-over"></section>
  <section class="view" id="v-fore"></section>
  <section class="view" id="v-chart"></section>
+ <section class="view" id="v-proj"></section>
  <section class="view" id="v-hist"></section>
  <section class="view" id="v-exp"></section>
 </main>
@@ -128,7 +131,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 setInterval(()=>api('/ping').catch(()=>{}),4000);api('/ping');
 function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('main').scrollTop=0}
-$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(b.dataset.v);if(b.dataset.v==='hist')loadHist()}};
+$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(b.dataset.v);if(b.dataset.v==='hist')loadHist();if(b.dataset.v==='proj')loadProj()}};
 $('quit').onclick=async()=>{if(confirm('結束程式？分析結果會一併清除。')){await api('/quit',{method:'POST'}).catch(()=>{});document.body.innerHTML='<div class="empty" style="width:100%"><b>已結束</b>可以關閉這個視窗。</div>'}};
 $('drop').onclick=()=>$('file').click();
 ['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.add('on')}));
@@ -138,7 +141,7 @@ async function send(fs){await api('/reset',{method:'POST'});uploaded=[];$('flist
  for(const f of fs){const r=await api('/upload?name='+encodeURIComponent(f.name),{method:'POST',body:await f.arrayBuffer()});if(r.ok)uploaded.push(f.name)}
  $('flist').innerHTML=uploaded.map(n=>'<span class="chip">'+esc(n)+'</span>').join('');$('go').disabled=!uploaded.length}
 $('go').onclick=async()=>{$('go').disabled=true;$('status').innerHTML='<span class="spin"></span>分析中，大型聊天可能要一分鐘';
- const body={};['me','exclude','alias','since','until','tz','label'].forEach(k=>body[k]=$(k).value.trim());body.ctx={met:$('c_met').value,stage:$('c_stage').value,breakup:$('c_br').value};
+ const body={};['me','exclude','alias','since','until','tz','label'].forEach(k=>body[k]=$(k).value.trim());body.project=$('proj').value;body.ctx={met:$('c_met').value,stage:$('c_stage').value,breakup:$('c_br').value};
  let d;try{const r=await api('/run',{method:'POST',body:JSON.stringify(body)});d=await r.json()}catch(e){d={error:'連不到程式，請重新開啟 App。'}}
  $('go').disabled=false;$('status').textContent='';render(d);if(d.saved_run){$('status').textContent='已存入歷史紀錄';loadStore()}};
 function bar(v,lo,hi){return '<div class="track"><i style="width:'+v+'%"></i>'+(lo!=null?'<em style="left:'+lo+'%;width:'+Math.max(1,hi-lo)+'%"></em>':'')+'</div>'}
@@ -234,7 +237,55 @@ function backtestHtml(b){let h='<h2>預測準不準？（回測）</h2><p class=
  if(!sc)h+='<p class="note">在上方表格的「實際狀態」欄標註你覺得當時真正的關係狀態。預測與標註相隔至少 6 週，這裡才會開始比對。</p>';
  else h+='<p class="sub">預測排名第一的落點，和你標註的實際狀態相符：'+sc.hit_rate_pct+'%（'+sc.n+' 組）。</p><table class="hist"><tr><th>間隔</th><th>預測第一名</th><th>你標註的實際狀態</th><th>預測給實際狀態的可能性</th></tr>'+sc.rows.map(r=>'<tr class="row"><td>'+r.days+' 天</td><td>'+esc(r.predicted_top)+'</td><td>'+esc(r.actual)+(r.hit?' ✔':'')+'</td><td>'+(r.prob_on_actual!=null?r.prob_on_actual+'%':'-')+'</td></tr>').join('')+'</table>';
  h+='<p class="note">這裡只量測、不自動調整權重：樣本太少時自動調整會過度貼合少數幾次紀錄，反而更不準。累積足夠多組之後，才有資格檢討預測用的權重。</p>';return h}
-loadStore();
+const PC=['#1ed760','#f573a0','#509bf5','#ffa42b','#a78bfa','#ffd23f','#ff5d5d','#b3b3b3'];let PJ=null,PSEL=null;
+async function fillProj(){const r=await J('/api/projects');PJ=r;const el=$('proj'),cur=el.value;
+ el.innerHTML='<option value="">自動（同一組名字會歸到原本的對象）</option>'+(r.projects||[]).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'<option value="__new">＋ 新增對象…</option>';
+ el.value=[...el.options].some(o=>o.value===cur)?cur:''}
+$('proj').onchange=async e=>{if(e.target.value!=='__new')return;e.target.value='';
+ if(!HIST||!HIST.folder){alert('要先在下方選好儲存位置，才能建立對象。');return}
+ const n=prompt('對象名稱（例如：小美、A 同學）');if(!n)return;const r=await J('/api/project_create',{name:n});if(r.error){alert(r.error);return}await fillProj();e.target.value=r.id};
+function lineChart(W,Hh,series,{xmin,xmax,ymin,ymax,xf,yf,dash}){const L=44,R=14,T=12,B=26,x=v=>L+(v-xmin)/(xmax-xmin||1)*(W-L-R),y=v=>Hh-B-(v-ymin)/(ymax-ymin||1)*(Hh-T-B);let o='<svg viewBox="0 0 '+W+' '+Hh+'" width="100%" style="background:#181818;border-radius:12px">';
+ for(let i=0;i<=4;i++){const v=ymin+(ymax-ymin)*i/4;o+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="#2a2a2a"/><text x="'+(L-6)+'" y="'+(y(v)+4)+'" font-size="10" fill="#b3b3b3" text-anchor="end">'+yf(v)+'</text>'}
+ for(let i=0;i<=4;i++){const v=xmin+(xmax-xmin)*i/4;o+='<text x="'+x(v)+'" y="'+(Hh-8)+'" font-size="10" fill="#b3b3b3" text-anchor="middle">'+xf(v)+'</text>'}
+ series.forEach(s=>{if(s.band)o+='<polygon points="'+s.band.map(p=>x(p[0])+','+y(p[1])).join(' ')+'" fill="'+s.c+'" fill-opacity=".15"/>';
+  if(s.pts.length>1)o+='<polyline fill="none" stroke="'+s.c+'" stroke-width="2.5" stroke-linejoin="round"'+(s.dash?' stroke-dasharray="6 4"':'')+' points="'+s.pts.map(p=>x(p[0])+','+y(p[1])).join(' ')+'"/>';
+  if(s.dots)s.pts.forEach(p=>o+='<circle cx="'+x(p[0])+'" cy="'+y(p[1])+'" r="4" fill="'+s.c+'"/>')});return o+'</svg>'}
+const D=s=>Date.parse(s.length<=10?s+'T00:00:00':s)/864e5,dfmt=v=>new Date(v*864e5).toISOString().slice(5,10);
+async function loadProj(){const el=$('v-proj');await fillProj();const r=PJ;
+ let g='<div class="hero plain"><div><h1>多對象對比</h1><div class="meta">一個對象一個專案，把同一個人的多次分析放在一起，再並排比較不同對象的現況與預測</div></div></div><div class="body">';
+ if(!r.folder){el.innerHTML=g+'<div class="empty"><b>還沒有選儲存位置</b>到「開始分析」頁最下方選一個資料夾，才能建立對象並累積紀錄。</div></div>';return}
+ g+='<div class="play" style="margin:0 0 14px"><input id="newp" placeholder="新增對象名稱（例如：小美）" style="max-width:260px"><button class="go" id="addp" style="padding:10px 22px">建立對象</button><span class="status" id="pmsg"></span></div>';
+ if(!r.projects.length)g+='<div class="empty"><b>還沒有對象</b>先建立一個對象，之後在「開始分析」選擇歸到哪個對象；已存的紀錄可以在下方指定。</div>';
+ const act=r.projects.filter(p=>p.latest);if(!PSEL){PSEL=new Set();act.forEach(p=>PSEL.add(p.id))}
+ g+='<div class="cards">'+r.projects.map((p,i)=>{const l=p.latest;return '<div class="card" style="border-left:4px solid '+PC[i%PC.length]+'"><div style="display:flex;justify-content:space-between;gap:8px"><label style="display:flex;gap:8px;align-items:center;font-weight:600;color:#fff;margin:0"><input type="checkbox" class="psel" data-id="'+p.id+'" style="width:auto"'+(PSEL.has(p.id)?' checked':'')+(l?'':' disabled')+'>'+esc(p.name)+'</label><span style="white-space:nowrap"><button class="mini prn" data-id="'+p.id+'" data-n="'+esc(p.name)+'">改名</button> <button class="mini pdel" data-id="'+p.id+'">刪除</button></span></div>'+
+   (l?'<b style="margin-top:10px">'+l.closeness+'</b><span>親密度・'+esc(l.band.replace(/（僅供參考.*/,''))+'<br>'+p.n+' 筆紀錄・最近 '+fdate(l.saved_at).slice(0,10)+'</span>':'<span style="display:block;margin-top:10px">還沒有紀錄</span>')+'</div>'}).join('')+'</div>';
+ const sel=r.projects.map((p,i)=>({p,c:PC[i%PC.length]})).filter(x=>x.p.latest&&PSEL.has(x.p.id));
+ if(sel.length<2)g+='<p class="note">勾選兩個以上有紀錄的對象，才會顯示並排比較。</p>';
+ else{
+  g+='<h2>並排比較（各對象最新一筆）</h2><div style="overflow-x:auto"><table class="hist cmp"><tr><th>指標</th>'+sel.map(x=>'<th style="color:'+x.c+'">'+esc(x.p.name)+'</th>').join('')+'</tr>';
+  const row=(n,f)=>'<tr class="row"><td>'+n+'</td>'+sel.map(x=>'<td>'+f(x.p.latest,x.p.latest.digest||{})+'</td>').join('')+'</tr>';
+  g+=row('分析時間',l=>fdate(l.saved_at))+row('資料量',l=>(l.total||'-')+' 則'+(Array.isArray(l.span)?'・'+String(l.span[0]).slice(0,10)+' ～ '+String(l.span[1]).slice(0,10):''))+row('親密度',l=>'<b>'+l.closeness+'</b>')+row('浪漫訊號',l=>l.romantic)+row('關係區間',l=>esc((l.band||'').replace(/（僅供參考.*/,'')))+row('趨勢',l=>esc(l.trend||'-'))+row('信心',l=>esc(l.confidence||'-'))+
+   row('預測模式',(l,d)=>d.mode==='early'?'早期（1 週）':d.mode==='full'?'完整（'+esc(d.horizon)+'）':'未做預測')+
+   row('涼掉／淡出風險',(l,d)=>d.mode==='early'?'<b>'+esc(d.risk||'-')+'</b>（再掉到近期水位 3 成以下 '+Math.round(100*(d.fade||0))+'%）':d.mode==='full'?Math.round(100*(d.fade||0))+'%（4 週）':'-')+
+   row('預測第一名情境',(l,d)=>d.mode==='full'?esc(d.top)+' '+Math.round(d.top_pct)+'%':'-')+
+   row('近期訊息量',(l,d)=>d.recent!=null?d.recent+' '+d.unit:'-')+row('預測訊息量',(l,d)=>d.next_p50!=null?d.next_p50+' '+d.unit:'-')+
+   row('對話情境',l=>{const c=l.context||{};const lb=(id,v)=>{const o=[...$(id).options].find(o=>o.value===v);return o?o.text:v};return esc([c.met&&lb('c_met',c.met),c.stage&&lb('c_stage',c.stage),c.breakup&&lb('c_br',c.breakup)].filter(Boolean).join('、')||'未標註')})+'</table></div>';
+  g+='<p class="note">不同對象的「分數」不能直接當作誰比較喜歡你：每段關係的聊天量、見面頻率、認識方式都不同。比較的重點是各自的趨勢與風險，以及早期模式（1 週）和完整模式（8 週）的預測不是同一把尺，表中已分開標示。</p>';
+  const cs=sel.map(x=>({c:x.c,pts:x.p.runs.map(r=>[D(r.saved_at),r.closeness]),dots:true,name:x.p.name}));let xs=cs.flatMap(s=>s.pts.map(p=>p[0]));let a=Math.min(...xs),b=Math.max(...xs);if(a===b){a-=3;b+=3}
+  g+='<h2>親密度隨時間</h2>'+legendHtml(sel)+lineChart(900,260,cs,{xmin:a,xmax:b,ymin:0,ymax:100,xf:dfmt,yf:v=>Math.round(v)});
+  const ws=[];sel.forEach(x=>{const d=x.p.latest.digest||{},wk=Object.entries(d.weekly||{}).sort().slice(-26);if(!wk.length)return;const pts=wk.map(([k,v])=>[D(k),v]);ws.push({c:x.c,pts});
+   if(d.future&&d.future.length){const f=d.future.map(q=>[D(q.date),q.p50]);ws.push({c:x.c,dash:true,pts:[pts[pts.length-1]].concat(f),band:d.future.map(q=>[D(q.date),q.p90]).concat(d.future.map(q=>[D(q.date),q.p10]).reverse())})}});
+  if(ws.length){const ax=ws.flatMap(s=>s.pts.map(p=>p[0])),ay=ws.flatMap(s=>s.pts.map(p=>p[1]).concat((s.band||[]).map(p=>p[1])));
+   g+='<h2>每週訊息量與預測</h2><p class="sub">實線＝實際，虛線＝預測中位數，淡色帶＝80% 區間。早期模式的對象沒有每週預測，只畫實際。</p>'+legendHtml(sel)+lineChart(900,280,ws,{xmin:Math.min(...ax),xmax:Math.max(...ax),ymin:0,ymax:Math.max(...ay)*1.1||1,xf:dfmt,yf:v=>Math.round(v)})}}
+ if(r.unassigned.length){g+='<h2>未分組的紀錄</h2><p class="sub">舊紀錄或沒指定對象的紀錄。指定後就會出現在對象裡。</p><table class="hist"><tr><th>時間</th><th>參與者</th><th>親密度</th><th>歸到</th></tr>'+r.unassigned.map(u=>'<tr class="row"><td>'+fdate(u.saved_at)+'</td><td>'+esc(u.people.join(' × '))+'</td><td>'+u.closeness+'</td><td><select class="asg" data-id="'+u.id+'"><option value="">不分組</option>'+r.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></td></tr>').join('')+'</table>'}
+ el.innerHTML=g+'</div>';
+ $('addp').onclick=async()=>{const x=await J('/api/project_create',{name:$('newp').value});if(x.error){$('pmsg').textContent=x.error;return}loadProj()};
+ el.querySelectorAll('.psel').forEach(c=>c.onchange=()=>{c.checked?PSEL.add(c.dataset.id):PSEL.delete(c.dataset.id);loadProj()});
+ el.querySelectorAll('.prn').forEach(b=>b.onclick=async()=>{const n=prompt('新的名稱',b.dataset.n);if(n){const x=await J('/api/project_rename',{id:b.dataset.id,name:n});if(x.error||x.ok===false)alert('無法改名（名稱空白或重複）');loadProj()}});
+ el.querySelectorAll('.pdel').forEach(b=>b.onclick=async()=>{if(confirm('刪除這個對象？裡面的紀錄不會被刪，會變成「未分組」。')){await J('/api/project_delete',{id:b.dataset.id});PSEL=null;loadProj()}});
+ el.querySelectorAll('.asg').forEach(s=>s.onchange=async()=>{await J('/api/run_assign',{id:s.dataset.id,project:s.value});loadProj()})}
+function legendHtml(sel){return '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 8px;font-size:13px">'+sel.map(x=>'<span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:'+x.c+';margin-right:6px"></i>'+esc(x.p.name)+'</span>').join('')+'</div>'}
+loadStore().then(fillProj);
 document.addEventListener('click',e=>{const i=e.target.closest('.imgs img');if(i){$('lbimg').src=i.src;$('lb').classList.add('on')}else if(e.target.closest('#lb'))$('lb').classList.remove('on')});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('lb').classList.remove('on')});
 </script></body></html>

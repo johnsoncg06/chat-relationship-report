@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """打包後的煙霧測試：對執行中的 App 上傳一份合成 LINE 聊天，跑完整流程，檢查主要欄位。
 用法: python tests/smoke.py <port> <token>   （失敗時以非零結束碼退出，讓 CI 擋下發布）"""
-import sys, json, time, random, urllib.request, urllib.parse
+import sys, json, time, random, urllib.request, urllib.parse, urllib.error
 try: sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 except Exception: pass
 port, tok = sys.argv[1], sys.argv[2]
@@ -67,5 +67,21 @@ assert 'evidence' not in jcall('/api/run?id=' + ids[0])['score'], 'evidence must
 c = jcall('/api/compare?a=%s&b=%s' % (ids[0], ids[1])); assert c['rows'], c
 assert jcall('/api/run_update', {'id': ids[1], 'label': 'x'}).get('ok')
 assert jcall('/api/run_delete', {'id': ids[0]}).get('ok') and len(jcall('/api/history')['runs']) == 1
+# --- 多對象（專案）：建立兩個對象 → 指定紀錄 → 同一組名字自動歸隊 → 早期模式對象也能並排 → 改名／刪除 ---
+pa = jcall('/api/project_create', {'name': '小華'})['id']; pb = jcall('/api/project_create', {'name': '早期對象'})['id']
+try: jcall('/api/project_create', {'name': '小華'}); raise SystemExit('duplicate project name must be rejected')
+except urllib.error.HTTPError as ex: assert ex.code == 400
+assert jcall('/api/run_assign', {'id': ids[1], 'project': pa}).get('ok')
+call('/reset', b''); call('/upload?name=smoke.txt', '\n'.join(L).encode('utf-8'))
+r3 = json.loads(call('/run', json.dumps({'tz': '8'}).encode())); assert r3.get('saved_run')
+assert jcall('/api/run?id=' + r3['saved_run'])['meta']['project'] == pa, 'same pair must auto-join its project'
+call('/reset', b''); call('/upload?name=early.txt', '\n'.join(E).encode('utf-8')); time.sleep(1.1)
+r4 = json.loads(call('/run', json.dumps({'tz': '8', 'ctx': {'met': 'new'}, 'project': pb}).encode())); assert r4.get('saved_run')
+po = jcall('/api/projects'); by = {p['name']: p for p in po['projects']}
+assert by['小華']['n'] == 2 and by['早期對象']['n'] == 1 and not po['unassigned'], po
+assert by['小華']['latest']['digest']['mode'] == 'full' and by['小華']['latest']['digest']['future'], 'full digest missing'
+assert by['早期對象']['latest']['digest']['mode'] == 'early' and by['早期對象']['latest']['digest']['risk'].startswith('高')
+assert jcall('/api/project_rename', {'id': pb, 'name': '改名'}).get('ok')
+assert jcall('/api/project_delete', {'id': pb}).get('ok') and len(jcall('/api/projects')['unassigned']) == 1, 'delete must keep runs as unassigned'
 call('/quit', b'')
 print('SMOKE OK closeness=%s' % d['score']['closeness'])

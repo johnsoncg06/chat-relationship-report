@@ -77,7 +77,7 @@ def _weekly(csv_path):
     wd, wn = lt.weekly_counts(lt.load_csv(csv_path)); return {d.isoformat(): n for d, n in zip(wd, wn)}
 
 
-def save_run(out_dir, result, label=''):
+def save_run(out_dir, result, label='', project=None):
     """out_dir：pipeline 的輸出資料夾。回傳 run id；未設定資料夾時回傳 None。"""
     rd = runs_dir()
     if not rd: return None
@@ -95,9 +95,113 @@ def save_run(out_dir, result, label=''):
     meta = {'id': rid, 'saved_at': now.isoformat(timespec='seconds'), 'label': label, 'actual_status': None, 'people': list(st['people']), 'key': pair_key(st['people']),
             'is_group': bool(st.get('is_group')), 'span': st.get('span'), 'total': st.get('total'), 'closeness': sc['closeness'], 'romantic': sc['romantic_signal'],
             'band': sc['band'], 'profile': sc.get('profile', 'base'), 'context': {k: (sc.get('context') or {}).get(k) for k in ('met', 'stage', 'breakup')}, 'trend': sc['trend'], 'confidence': sc['confidence'], 'has_forecast': bool(fc),
+            'project': _resolve_project(project, pair_key(st['people'])),
             'weekly': _weekly(csvp) if os.path.isfile(csvp) else {}}
     json.dump(meta, open(os.path.join(dst, 'meta.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     return rid
+
+
+# ---------------- 對象（專案） ----------------
+# 一個「對象」= 一個專案，把同一個人的多次分析放在一起；專案清單存在儲存資料夾的 projects.json。
+def _pj_path():
+    f = load_config().get('folder'); return os.path.join(f, 'projects.json') if f else None
+
+
+def _pj_load():
+    p = _pj_path()
+    try: return json.load(open(p, encoding='utf-8')) if p and os.path.isfile(p) else []
+    except Exception: return []
+
+
+def _pj_save(lst):
+    p = _pj_path()
+    if not p: raise ValueError('還沒有選儲存資料夾')
+    json.dump(lst, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+
+
+def _resolve_project(project, key):
+    """明確指定就用指定的；沒指定時，若已有專案收過同一組參與者的紀錄就自動歸到那個專案，否則不分組。"""
+    ids = {x['id'] for x in _pj_load()}
+    if project in ids: return project
+    if project: return None
+    for m in list_runs():
+        if m.get('key') == key and m.get('project') in ids: return m['project']
+    return None
+
+
+def create_project(name, color=None):
+    name = (name or '').strip()[:40]
+    if not name: raise ValueError('請輸入對象名稱')
+    lst = _pj_load()
+    if any(x['name'] == name for x in lst): raise ValueError('已經有同名的對象')
+    pid = 'p' + dt.datetime.now().strftime('%Y%m%d%H%M%S%f')[:17]
+    lst.append({'id': pid, 'name': name, 'created': dt.datetime.now().isoformat(timespec='seconds')}); _pj_save(lst); return pid
+
+
+def rename_project(pid, name):
+    name = (name or '').strip()[:40]; lst = _pj_load()
+    if not name or any(x['name'] == name and x['id'] != pid for x in lst): return False
+    for x in lst:
+        if x['id'] == pid: x['name'] = name; _pj_save(lst); return True
+    return False
+
+
+def delete_project(pid, delete_runs=False):
+    """刪除對象；預設只解除分組，紀錄保留（變成「未分組」）。"""
+    lst = _pj_load()
+    if not any(x['id'] == pid for x in lst): return False
+    _pj_save([x for x in lst if x['id'] != pid])
+    for m in list_runs():
+        if m.get('project') == pid:
+            if delete_runs: delete_run(m['id'])
+            else: assign_run(m['id'], None)
+    return True
+
+
+def assign_run(rid, pid):
+    m, d = _meta(rid)
+    if not m: return False
+    if pid and pid not in {x['id'] for x in _pj_load()}: return False
+    m['project'] = pid or None
+    json.dump(m, open(os.path.join(d, 'meta.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1); return True
+
+
+def _digest(rid):
+    """從一筆紀錄抽出跨對象比較用的預測摘要（只讀已存的檔案，不重算）。"""
+    m, d = _meta(rid)
+    try: fc = json.load(open(os.path.join(d, 'forecast.json'), encoding='utf-8'))
+    except Exception: fc = None
+    wk = m.get('weekly') or {}; out = {'weekly': wk, 'mode': None}
+    if not fc: return out
+    if fc.get('mode') == 'early':
+        e = fc.get('early') or {}; pj = e.get('projection') or {}
+        out.update(mode='early', risk=e.get('risk_label'), fade=pj.get('fade_risk_7d'), horizon='未來 1 週', recent=pj.get('recent_7d_msgs_per_day'),
+                   next_p50=(pj.get('next_7d_msgs_per_day') or {}).get('p50'), unit='則/日', cool=e.get('cool_signals'), warm=e.get('warm_signals'))
+        return out
+    sc = fc.get('scenarios') or {}; top = max(sc, key=lambda k: sc[k]['point']) if sc else None
+    fm = fc.get('forecast_msgs_per_week') or {}; ds = sorted(wk)
+    fut = []
+    if ds:
+        last = dt.date.fromisoformat(ds[-1])
+        for h in range(int(fc.get('horizon_weeks') or 0)):
+            v = fm.get(f'+{h + 1}w')
+            if v: fut.append({'date': (last + dt.timedelta(weeks=h + 1)).isoformat(), 'p10': v['p10'], 'p50': v['p50'], 'p90': v['p90']})
+    out.update(mode='full', fade=fc.get('fade_risk_4wk'), horizon='未來 %s 週' % fc.get('horizon_weeks'), top=top, top_pct=(sc[top]['point'] if top else None),
+               scenarios={k: v['point'] for k, v in sc.items()}, future=fut, recent=fc.get('recent_4wk_msgs_per_week'), next_p50=(fut[-1]['p50'] if fut else None), unit='則/週',
+               slope=fc.get('trend_slope_pct_per_week'))
+    return out
+
+
+def projects_overview():
+    """每個對象：全部紀錄的摘要 + 最新一筆的預測摘要；另附未分組的紀錄。"""
+    runs = list_runs(); lst = _pj_load(); ids = {x['id'] for x in lst}; out = []
+    for p in lst:
+        rs = sorted([r for r in runs if r.get('project') == p['id']], key=lambda r: r['saved_at'])
+        item = {'id': p['id'], 'name': p['name'], 'n': len(rs), 'runs': rs}
+        if rs:
+            last = rs[-1]; item['latest'] = dict(last, **{'digest': _digest(last['id'])})
+        out.append(item)
+    return {'projects': out, 'unassigned': [r for r in runs if r.get('project') not in ids]}
 
 
 def _meta(rid):

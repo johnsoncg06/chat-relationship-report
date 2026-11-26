@@ -166,6 +166,9 @@ class H(BaseHTTPRequestHandler):
             c = store.load_config()
             return self._json({'folder': c.get('folder'), 'default_folder': store.default_folder(), 'auto_save': c.get('auto_save', True) if c.get('folder') else False,
                                'runs': store.list_runs(), 'backtest': store.backtest() if c.get('folder') else None})
+        if u.path == '/api/projects':
+            if not store.load_config().get('folder'): return self._json({'folder': None, 'projects': [], 'unassigned': []})
+            return self._json(dict(store.projects_overview(), folder=True))
         if u.path == '/api/run':
             r = store.load_run(q.get('id', [''])[0]); return self._json(r if r else {'error': '找不到這筆紀錄'}, 200 if r else 404)
         if u.path == '/api/compare':
@@ -206,7 +209,7 @@ class H(BaseHTTPRequestHandler):
                     if not res.get('error'):
                         cfg = store.load_config()
                         if cfg.get('folder') and cfg.get('auto_save', True):
-                            try: res['saved_run'] = store.save_run(os.path.join(WORK, 'out'), res, (req.get('label') or '').strip()[:80])
+                            try: res['saved_run'] = store.save_run(os.path.join(WORK, 'out'), res, (req.get('label') or '').strip()[:80], req.get('project'))
                             except Exception as e: res.setdefault('notes', []).append('歷史紀錄儲存失敗：' + str(e)[:120])
                 except Exception: res = {'error': '執行失敗：' + traceback.format_exc(limit=3)}
             return self._ok(body=json.dumps(res, ensure_ascii=False).encode())
@@ -223,6 +226,14 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/run_update':
                 ok = store.update_run(req.get('id', ''), req.get('label'), req.get('actual_status'), bool(req.get('clear_status')))
                 return self._json({'ok': ok}, 200 if ok else 400)
+            if u.path in ('/api/project_create', '/api/project_rename', '/api/project_delete', '/api/run_assign'):
+                try:
+                    if u.path == '/api/project_create': return self._json({'id': store.create_project(req.get('name'))})
+                    if u.path == '/api/project_rename': ok = store.rename_project(req.get('id', ''), req.get('name'))
+                    elif u.path == '/api/project_delete': ok = store.delete_project(req.get('id', ''), bool(req.get('delete_runs')))
+                    else: ok = store.assign_run(req.get('id', ''), req.get('project') or None)
+                    return self._json({'ok': ok}, 200 if ok else 400)
+                except ValueError as e: return self._json({'error': str(e)}, 400)
             if u.path == '/api/run_delete':
                 ok = store.delete_run(req.get('id', '')); return self._json({'ok': ok}, 200 if ok else 404)
             if u.path == '/api/save_now':
@@ -231,7 +242,7 @@ class H(BaseHTTPRequestHandler):
                 if not os.path.isfile(os.path.join(o, 'score.json')): return self._json({'error': '還沒有分析結果可以儲存'}, 400)
                 try:
                     fc = json.load(open(os.path.join(o, 'forecast.json'), encoding='utf-8')) if os.path.isfile(os.path.join(o, 'forecast.json')) else None
-                    return self._json({'id': store.save_run(o, {'forecast': fc}, (req.get('label') or '').strip()[:80])})
+                    return self._json({'id': store.save_run(o, {'forecast': fc}, (req.get('label') or '').strip()[:80], req.get('project'))})
                 except Exception as e: return self._json({'error': str(e)[:150]}, 500)
         self._ok(404, 'text/plain', b'not found')
 
