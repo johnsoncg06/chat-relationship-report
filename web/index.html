@@ -175,7 +175,7 @@ async function loadAsk(){const el=$('v-ask');const c=await(await api('/api/ask_c
   const r=await api('/api/ask',{method:'POST',body:JSON.stringify({question:q,history:ASKH})});const j=await r.json();$('pend').remove();
   if(!r.ok){qa.insertAdjacentHTML('beforeend','<div class="m e">'+esc(j.error||'失敗')+'</div>');return}
   ASKH.push({role:'user',content:q},{role:'assistant',content:j.answer});qa.insertAdjacentHTML('beforeend','<div class="m a">'+esc(j.answer)+'</div>')};
- if($('aq')){$('aq').onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing)go($('aq').value)};$('asend').onclick=()=>go($('aq').value);document.querySelectorAll('.sug button').forEach(b=>b.onclick=()=>go(b.textContent))}}
+ if($('aq')){let comp=false,cend=0;$('aq').addEventListener('compositionstart',()=>comp=true);$('aq').addEventListener('compositionend',()=>{comp=false;cend=Date.now()});$('aq').onkeydown=e=>{if(e.key!=='Enter'||e.isComposing||comp||e.keyCode===229||Date.now()-cend<80)return;go($('aq').value)};$('asend').onclick=()=>go($('aq').value);document.querySelectorAll('.sug button').forEach(b=>b.onclick=()=>go(b.textContent))}}
 $('quit').onclick=async()=>{if(confirm('結束程式？分析結果會一併清除。')){await api('/quit',{method:'POST'}).catch(()=>{});document.body.innerHTML='<div class="empty" style="width:100%"><b>已結束</b>可以關閉這個視窗。</div>'}};
 $('drop').onclick=()=>$('file').click();
 ['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.add('on')}));
