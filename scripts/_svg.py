@@ -3,8 +3,11 @@ import math
 from xml.sax.saxutils import escape
 
 FONT = "'PingFang TC','Microsoft JhengHei','Noto Sans TC','Noto Sans CJK TC','Heiti TC','Segoe UI',sans-serif"
-COL = ['#2a6fdb', '#e8590c', '#2f9e44', '#9c36b5', '#868e96', '#c2255c']
-INK, MUTE, GRID = '#343a40', '#868e96', '#e9ecef'
+# Spotify 風格深色主題：近黑底、白字、灰階輔助字、Spotify 綠為主色，副色取 Wrapped 風格的亮色
+BG, CARD = '#121212', '#181818'
+GREEN, PINK, BLUE, ORANGE, PURPLE, YELLOW, RED = '#1ed760', '#f573a0', '#509bf5', '#ffa42b', '#a78bfa', '#ffd23f', '#ff5d5d'
+COL = [GREEN, PINK, BLUE, ORANGE, PURPLE, '#b3b3b3']
+INK, MUTE, GRID, AXIS, SUB = '#ffffff', '#b3b3b3', '#2a2a2a', '#535353', '#a7a7a7'
 
 
 def f(v): return f'{v:.1f}'.rstrip('0').rstrip('.') if abs(v) < 1e6 else str(int(v))
@@ -16,9 +19,10 @@ class Svg:
 
     def add(self, s): self.e.append(s)
 
-    def rect(self, x, y, w, h, fill='none', stroke=None, op=None, sw=1):
+    def rect(self, x, y, w, h, fill='none', stroke=None, op=None, sw=1, rx=None):
+        rr = f' rx="{rx}"' if rx else ''
         st = f' stroke="{stroke}" stroke-width="{sw}"' if stroke else ''; o = f' fill-opacity="{op}"' if op is not None else ''
-        self.add(f'<rect x="{f(x)}" y="{f(y)}" width="{f(max(w, 0))}" height="{f(max(h, 0))}" fill="{fill}"{o}{st}/>')
+        self.add(f'<rect x="{f(x)}" y="{f(y)}" width="{f(max(w, 0))}" height="{f(max(h, 0))}"{rr} fill="{fill}"{o}{st}/>')
 
     def line(self, x1, y1, x2, y2, stroke=INK, sw=1, dash=None, op=None):
         d = f' stroke-dasharray="{dash}"' if dash else ''; o = f' stroke-opacity="{op}"' if op is not None else ''
@@ -41,7 +45,7 @@ class Svg:
     def save(self, path):
         with open(path, 'w', encoding='utf-8') as fh:
             fh.write(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" width="{self.w}" height="{self.h}" font-family="{FONT}">'
-                     f'<rect width="{self.w}" height="{self.h}" fill="#ffffff"/>' + ''.join(self.e) + '</svg>')
+                     f'<rect width="{self.w}" height="{self.h}" rx="16" fill="{CARD}"/>' + ''.join(self.e) + '</svg>')
 
 
 def nice_ticks(lo, hi, n=5):
@@ -89,7 +93,7 @@ class Axes:
             if grid: s.line(xx, self.y, xx, self.y + self.h, GRID, 1)
             if xrot: s.text(xx, self.y + self.h + 14, lab, 10, 'end', MUTE, rot=xrot)
             else: s.text(xx, self.y + self.h + 15, lab, 10, 'middle', MUTE)
-        s.line(self.x, self.y + self.h, self.x + self.w, self.y + self.h, '#adb5bd', 1); s.line(self.x, self.y, self.x, self.y + self.h, '#adb5bd', 1)
+        s.line(self.x, self.y + self.h, self.x + self.w, self.y + self.h, AXIS, 1); s.line(self.x, self.y, self.x, self.y + self.h, AXIS, 1)
 
     def _auto(self, lim, sc, n):
         if sc == 'log':
@@ -107,7 +111,7 @@ def legend(svg, x, y, items, size=11):
     """items: [(label, color)]，由 (x,y) 往右依序排。"""
     cx = x
     for lab, c in items:
-        svg.rect(cx, y - 9, 12, 12, c); svg.text(cx + 17, y + 1, lab, size, 'start', INK); cx += 24 + len(str(lab)) * (size * 0.95) + 10
+        svg.rect(cx, y - 9, 12, 12, c, rx=6); svg.text(cx + 17, y + 1, lab, size, 'start', INK); cx += 24 + len(str(lab)) * (size * 0.95) + 10
     return cx
 
 
@@ -116,7 +120,7 @@ def ramp(t, stops):
     a, b = stops[i], stops[i + 1]; return '#%02x%02x%02x' % tuple(int(a[k] + (b[k] - a[k]) * u) for k in range(3))
 
 
-YLORRD = [(255, 255, 204), (254, 217, 118), (253, 141, 60), (227, 26, 28), (128, 0, 38)]
+YLORRD = [(36, 36, 36), (20, 83, 45), (30, 215, 96), (214, 255, 160), (255, 255, 255)]   # 深灰 → 深綠 → Spotify 綠 → 亮（熱圖用）
 
 
 def kde(vals, grid):

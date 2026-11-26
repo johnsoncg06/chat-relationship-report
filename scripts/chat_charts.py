@@ -5,7 +5,7 @@ import sys, os, json, math, datetime as dt
 from collections import defaultdict, Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _lite as lt
-from _svg import Svg, Axes, legend, ramp, YLORRD, kde, COL, INK, MUTE, nice_ticks
+from _svg import Svg, Axes, legend, ramp, YLORRD, kde, COL, INK, MUTE, nice_ticks, GREEN, PINK, BLUE, ORANGE, PURPLE, YELLOW, RED, SUB, AXIS
 
 csv_path, stats_path, score_path, out = sys.argv[1:5]
 os.makedirs(out, exist_ok=True)
@@ -28,7 +28,7 @@ bw = ax.w / max(len(months), 1) * 0.8
 for i, m in enumerate(months):
     base = 0; cx = ax.px(i + 0.5)
     for p in people:
-        v = cnt[(m, p)]; y1, y0 = ax.py(base + v), ax.py(base); sv.rect(cx - bw / 2, y1, bw, y0 - y1, col[p]); base += v
+        v = cnt[(m, p)]; y1, y0 = ax.py(base + v), ax.py(base); sv.rect(cx - bw / 2, y1, bw, y0 - y1, col[p], rx=2); base += v
     sv.text(cx, ax.y + ax.h + 14, m, 10, 'end', MUTE, rot=-45)
 legend(sv, 80, 28, [(p, col[p]) for p in people]); sv.save(path('01_monthly_volume.svg'))
 
@@ -43,7 +43,7 @@ if not S['is_group'] and len(people) == 2:
         if t: share[m] = gi[(m, people[0])] / t
     ms = list(share); sv = Svg(900, 400); ax = Axes(sv, 70, 50, 800, 260, (0, max(len(ms) - 1, 1)), (0, 1), title=f'每月「{people[0]}」開話題占比（虛線=50%）')
     ax.frame(xticks=[], yticks=[(v, f'{int(v * 100)}%') for v in (0, .25, .5, .75, 1)])
-    sv.line(ax.x, ax.py(.5), ax.x + ax.w, ax.py(.5), '#868e96', 1.2, '6 4')
+    sv.line(ax.x, ax.py(.5), ax.x + ax.w, ax.py(.5), SUB, 1.2, '6 4')
     pts = [(ax.px(i), ax.py(share[m])) for i, m in enumerate(ms)]; sv.poly(pts, col[people[0]], 2)
     for (x_, y_), m in zip(pts, ms): sv.circle(x_, y_, 3.5, col[people[0]]); sv.text(x_, ax.y + ax.h + 14, m, 10, 'end', MUTE, rot=-45)
     sv.save(path('02_initiation_trend.svg')); summ['initiation_share_by_month'] = {k: round(v, 3) for k, v in share.items()}
@@ -96,12 +96,12 @@ def hist(vals, edges):
 mn_ = max(2, max(sn)); edges_n = sorted({int(10 ** (math.log10(mn_) * i / 24)) for i in range(25)})
 md_ = max(10, max(sd_)); edges_d = [10 ** (math.log10(md_) * i / 24) for i in range(25)]
 sv = Svg(980, 400)
-for k, (vals, edges, ttl, xl, color) in enumerate([(sn, edges_n, '每段對話的訊息數', '則數（對數）', '#4263eb'), ([max(1, v) for v in sd_], edges_d, '每段對話長度', '分鐘（對數）', '#0ca678')]):
+for k, (vals, edges, ttl, xl, color) in enumerate([(sn, edges_n, '每段對話的訊息數', '則數（對數）', BLUE), ([max(1, v) for v in sd_], edges_d, '每段對話長度', '分鐘（對數）', GREEN)]):
     c = hist(vals, edges); fi = next((i for i, n_ in enumerate(c) if n_), 0); lo_ = max(edges[fi], 1e-9) if edges[fi] > 0 else 1
     ax = Axes(sv, 70 + k * 480, 50, 400, 260, (lo_ if lo_ < edges[-1] else 1, edges[-1]), (0, max(c) * 1.1 or 1), xs='log', title=ttl, xlabel=xl); ax.frame()
     for i, n_ in enumerate(c):
         if i < fi: continue
-        x1, x2 = ax.px(max(edges[i], 1e-9)), ax.px(edges[i + 1]); sv.rect(x1, ax.py(n_), max(x2 - x1 - 0.5, 0.5), ax.y + ax.h - ax.py(n_), color)
+        x1, x2 = ax.px(max(edges[i], 1e-9)), ax.px(edges[i + 1]); sv.rect(x1, ax.py(n_), max(x2 - x1 - 1, 0.5), ax.y + ax.h - ax.py(n_), color, rx=2)
 sv.save(path('05_session_profile.svg'))
 summ['sessions'] = {'count': len(sess), 'median_msgs': float(lt.median(sn)), 'median_min': round(lt.median(sd_), 1)}
 
@@ -130,12 +130,12 @@ if len(wn) >= 6:
     summ['weekly_trend'] = {'spearman_rho': round(rho, 3), 'p': round(pv, 4), 'slope_msgs_per_week': round(sl, 2)}
     title = f'每週訊息量（Spearman ρ={rho:.2f}, p={pv:.3f}）'
 ymx = max(wn + [1]) * 1.12; ax = Axes(sv, 70, 50, 800, 260, (wd[0].toordinal(), wd[-1].toordinal()), (0, ymx), title=title); ax.frame(xticks=[(v, l) for v, l in date_ticks(wd[0], wd[-1], 6)])
-sv.poly([(ax.px(d.toordinal()), ax.py(n)) for d, n in zip(wd, wn)], '#495057', 1.8)
-if trend: sv.poly([(ax.px(wd[i].toordinal()), ax.py(trend[0] * i + trend[1])) for i in (0, len(wd) - 1)], '#e03131', 1.8, dash='7 4')
+sv.poly([(ax.px(d.toordinal()), ax.py(n)) for d, n in zip(wd, wn)], '#ffffff', 2)
+if trend: sv.poly([(ax.px(wd[i].toordinal()), ax.py(trend[0] * i + trend[1])) for i in (0, len(wd) - 1)], ORANGE, 1.8, dash='7 4')
 cp = (S.get('changepoints') or {}).get('volume')
 if cp:
-    cx = ax.px(dt.date.fromisoformat(cp['week_start'][:10]).toordinal()); sv.line(cx, ax.y, cx, ax.y + ax.h, '#7048e8', 1.5, '2 3')
-    sv.text(cx + 4, ax.y + 14, f"變點 p={cp['p_permutation']}", 11, 'start', '#7048e8'); summ['changepoint_volume'] = cp
+    cx = ax.px(dt.date.fromisoformat(cp['week_start'][:10]).toordinal()); sv.line(cx, ax.y, cx, ax.y + ax.h, PURPLE, 1.5, '2 3')
+    sv.text(cx + 4, ax.y + 14, f"變點 p={cp['p_permutation']}", 11, 'start', PURPLE); summ['changepoint_volume'] = cp
 sv.save(path('07_weekly_trend.svg'))
 
 # 8 訊息長度分布（小提琴圖）
@@ -155,22 +155,22 @@ if data:
 # 9 親密度定位圖
 sv = Svg(560, 560); ax = Axes(sv, 70, 50, 440, 440, (0, 100), (0, 100), title='關係區間定位（粗略分區，非精確界線）', xlabel='親密度 closeness', ylabel='浪漫訊號 romantic', tsize=13)
 ax.frame(grid=False)
-for (x0, y0, x1, y1, c) in [(0, 0, 25, 100, '#f1f3f5'), (35, 25, 100, 55, '#fff3bf'), (55, 55, 100, 100, '#ffc9c9'), (50, 0, 100, 25, '#d3f9d8')]:
-    sv.rect(ax.px(x0), ax.py(y1), ax.px(x1) - ax.px(x0), ax.py(y0) - ax.py(y1), c, op=.8)
-for t, x_, y_ in [('點頭之交', 3, 90), ('好友/兄弟', 60, 8), ('曖昧', 60, 38), ('情侶', 70, 80)]: sv.text(ax.px(x_), ax.py(y_), t, 13, 'start', '#495057')
-sv.circle(ax.px(SC['closeness']), ax.py(SC['romantic_signal']), 9, '#d6336c', '#000', 1.2); sv.save(path('09_relationship_map.svg'))
+for (x0, y0, x1, y1, c) in [(0, 0, 25, 100, '#535353'), (35, 25, 100, 55, YELLOW), (55, 55, 100, 100, PINK), (50, 0, 100, 25, GREEN)]:
+    sv.rect(ax.px(x0), ax.py(y1), ax.px(x1) - ax.px(x0), ax.py(y0) - ax.py(y1), c, op=.22)
+for t, x_, y_ in [('點頭之交', 3, 90), ('好友/兄弟', 60, 8), ('曖昧', 60, 38), ('情侶', 70, 80)]: sv.text(ax.px(x_), ax.py(y_), t, 13, 'start', INK, 'bold')
+sv.circle(ax.px(SC['closeness']), ax.py(SC['romantic_signal']), 9, PINK, '#ffffff', 2); sv.save(path('09_relationship_map.svg'))
 
 # 10 子分數雷達
 dims = SC.get('dimensions') or SC['sub_closeness']; labs = list(dims); vals = list(dims.values()); n = len(labs)
 sv = Svg(560, 560); cx, cy, R = 280, 290, 190; sv.text(280, 32, '五維度（互惠／回應／投入／溫度／穩定）' if SC.get('dimensions') else '親密度子分數', 15, 'middle', INK, 'bold')
 ang = [-math.pi / 2 + 2 * math.pi * i / n for i in range(n)]
-for lvl in (20, 40, 60, 80, 100): sv.poly([(cx + R * lvl / 100 * math.cos(a), cy + R * lvl / 100 * math.sin(a)) for a in ang], '#dee2e6', 1, close=True)
+for lvl in (20, 40, 60, 80, 100): sv.poly([(cx + R * lvl / 100 * math.cos(a), cy + R * lvl / 100 * math.sin(a)) for a in ang], '#333333', 1, close=True)
 for a, l, v in zip(ang, labs, vals):
-    sv.line(cx, cy, cx + R * math.cos(a), cy + R * math.sin(a), '#dee2e6', 1)
+    sv.line(cx, cy, cx + R * math.cos(a), cy + R * math.sin(a), '#333333', 1)
     sv.text(cx + (R + 24) * math.cos(a), cy + (R + 24) * math.sin(a) + 4, l, 13, 'middle', INK)
 pts = [(cx + R * v / 100 * math.cos(a), cy + R * v / 100 * math.sin(a)) for a, v in zip(ang, vals)]
-sv.poly(pts, '#1c7ed6', 2, '#1c7ed6', .25, close=True)
-for (x_, y_), v in zip(pts, vals): sv.circle(x_, y_, 3.5, '#1c7ed6'); sv.text(x_, y_ - 8, v, 10, 'middle', '#1864ab')
+sv.poly(pts, GREEN, 2.5, GREEN, .28, close=True)
+for (x_, y_), v in zip(pts, vals): sv.circle(x_, y_, 4, GREEN); sv.text(x_, y_ - 9, v, 11, 'middle', INK, 'bold')
 sv.save(path('10_closeness_radar.svg'))
 json.dump(summ, open(os.path.join(out, 'charts_summary.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 print(sorted(os.listdir(out)))
