@@ -204,6 +204,87 @@ def projects_overview():
     return {'projects': out, 'unassigned': [r for r in runs if r.get('project') not in ids]}
 
 
+# ---------------- 個人檔案：從「你這一側」的行為看自己的感情經營 ----------------
+# 全部是啟發式、未驗證；只描述聊天裡看得到的行為，不是性格或道德評價。需要每次分析都填「你的名字」才知道哪一側是你。
+def _lin(x, bad, good):
+    if x is None: return None
+    return max(0.0, min(1.0, (x - bad) / (good - bad)))
+
+
+def _mine(rid):
+    m, d = _meta(rid)
+    if not m: return None
+    try:
+        st = json.load(open(os.path.join(d, 'stats.json'), encoding='utf-8')); sc = json.load(open(os.path.join(d, 'score.json'), encoding='utf-8'))
+    except Exception: return None
+    me = st.get('me'); ppl = list(st.get('people') or {})
+    if st.get('is_group') or len(ppl) != 2 or me not in ppl: return None
+    ot = next(p for p in ppl if p != me); comp = {}
+    lat = st.get('reply_latency_min_median') or {}
+    if st.get('reply_latency_reliable', True) and lat.get(me) is not None: comp['回覆及時'] = (_lin(lat[me], 120, 5), 30)
+    ini = st.get('initiations') or {}; tot = sum(ini.values())
+    if tot >= 10: comp['主動平衡'] = (1 - abs(ini.get(me, 0) / tot - .5) / .5, 20)
+    b = (st.get('bids_by_sender') or {}).get(ot) or {}
+    if b.get('sent', 0) >= 10: comp['回應對方'] = (b.get('answered_within_30min', 0) / b['sent'], 30)
+    al = st.get('avg_len_chars') or {}
+    if al.get(ot): comp['表達投入'] = (min(1.0, (al.get(me) or 0) / al[ot]), 20)
+    comp = {k: v for k, v in comp.items() if v[0] is not None}
+    if len(comp) < 2: return None
+    w = sum(v[1] for v in comp.values()); score = round(100 * sum(v[0] * v[1] for v in comp.values()) / w)
+    wk = m.get('weekly') or {}; vals = [wk[k] for k in sorted(wk)]
+    peak = max((sum(vals[i:i + 4]) / len(vals[i:i + 4]) for i in range(0, max(1, len(vals) - 3))), default=0) if vals else 0
+    last4 = sum(vals[-4:]) / len(vals[-4:]) if vals else 0
+    span = st.get('span') or [None, None]
+    return {'id': rid, 'project': m.get('project') or 'k:' + m.get('key', ''), 'end': str(span[1])[:10], 'start': str(span[0])[:10], 'closeness': sc['closeness'], 'romantic': sc['romantic_signal'],
+            'score': score, 'comps': {k: round(100 * v[0]) for k, v in comp.items()}, 'weeks': len(vals), 'last4': round(last4, 1), 'peak4': round(peak, 1),
+            'ratio': round(last4 / peak, 2) if peak else None, 'people': ppl, 'saved_at': m['saved_at']}
+
+
+def personal_profile():
+    runs = list_runs(); names = {x['id']: x['name'] for x in _pj_load()}
+    mine = [r for r in (_mine(m['id']) for m in runs) if r]; skipped = len(runs) - len(mine)
+    for r in mine: r['name'] = names.get(r['project']) or ' × '.join(r['people'])
+    mine.sort(key=lambda r: (r['end'], r['saved_at']))
+    out = {'n_runs': len(runs), 'n_used': len(mine), 'skipped': skipped, 'runs': mine}
+    if not mine: out['archetype'] = None; return out
+    # 整體經營分：每個時間點，取各對象「到那天為止最新一筆」的平均（避免某對象紀錄多就被放大）
+    latest = {}; overall = []
+    for r in mine:
+        latest[r['project']] = r['score']; overall.append({'date': r['end'], 'score': round(sum(latest.values()) / len(latest), 1), 'n': len(latest)})
+    out['overall'] = overall
+    if len(overall) >= 3:
+        xs = [dt.date.fromisoformat(o['date']).toordinal() for o in overall]; ys = [o['score'] for o in overall]; mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+        den = sum((x - mx) ** 2 for x in xs)
+        sl = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / den * 30 if den else 0
+        out['slope_per_30d'] = round(sl, 2); out['slope_label'] = '進步中' if sl >= 2 else '退步中' if sl <= -2 else '大致持平'
+    byp = {}
+    for r in mine: byp.setdefault(r['project'], []).append(r)
+    prog = []
+    for pid, rs in byp.items():
+        a, b = rs[0], rs[-1]; days = (dt.date.fromisoformat(b['end']) - dt.date.fromisoformat(a['end'])).days if len(rs) > 1 else 0
+        prog.append({'project': pid, 'name': b['name'], 'n': len(rs), 'days': days, 'score_first': a['score'], 'score_last': b['score'], 'closeness_first': a['closeness'], 'closeness_last': b['closeness'], 'last': b})
+    out['progress'] = prog
+    lastend = max(r['end'] for r in mine); cur = [p['last'] for p in prog]
+    active = [r for r in cur if r['last4'] >= 15 and r['romantic'] >= 45 and (dt.date.fromisoformat(lastend) - dt.date.fromisoformat(r['end'])).days <= 45]
+    old = [r for r in cur if r['weeks'] >= 4 and r['ratio'] is not None]; faded = [r for r in old if r['ratio'] < .3]
+    avg = round(sum(r['score'] for r in cur) / len(cur)); ev = [f'你這一側的經營分平均 {avg}（共 {len(cur)} 段關係）', f'目前同時「有在聊且浪漫訊號偏高」的關係：{len(active)} 段']
+    if old: ev.append(f'有 4 週以上資料的 {len(old)} 段裡，{len(faded)} 段最近 4 週的量掉到高峰的 3 成以下')
+    comps = {}
+    for r in cur:
+        for k, v in r['comps'].items(): comps.setdefault(k, []).append(v)
+    cav = {k: round(sum(v) / len(v)) for k, v in comps.items()}
+    if cav: ev.append('各項平均：' + '、'.join(f'{k} {v}' for k, v in cav.items()))
+    tot_w = sum(r['weeks'] for r in cur)
+    if len(cur) < 2 and tot_w < 4: lab, tag = '資料不足', '至少要有 1 段 4 週以上的聊天，才有辦法描述。'
+    elif len(active) >= 3: lab, tag = '多線並進型（海王風，玩笑向）', '同時有好幾段投入度不低的聊天。純看聊天量看不出對方是否知情、是不是真的都在曖昧。'
+    elif len(old) >= 2 and len(faded) / len(old) >= .5: lab, tag = '快燃快熄型', '開頭熱度高，之後容易整段淡下去；可以回頭看是不是每次都在同一個階段掉下來。'
+    elif len(active) <= 1 and avg >= 60 and (not old or len(faded) / len(old) < .5): lab, tag = '純愛戰士', '目前投入集中在一段關係，回應與經營分數也不低。'
+    elif avg < 45: lab, tag = '慢熱觀望型', '回覆、回應或主動度偏保守，不一定是壞事，但容易讓對方抓不到你的興趣。'
+    else: lab, tag = '穩定經營型', '沒有特別極端的傾向，回覆與互動大致平衡。'
+    out['archetype'] = {'label': lab, 'tagline': tag, 'evidence': ev, 'avg_score': avg, 'active': len(active), 'components': cav}
+    return out
+
+
 def _meta(rid):
     rd = runs_dir()
     if not rd or not rid or os.sep in rid or rid.startswith('.'): return None, None

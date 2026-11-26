@@ -73,7 +73,7 @@ try: jcall('/api/project_create', {'name': '小華'}); raise SystemExit('duplica
 except urllib.error.HTTPError as ex: assert ex.code == 400
 assert jcall('/api/run_assign', {'id': ids[1], 'project': pa}).get('ok')
 call('/reset', b''); call('/upload?name=smoke.txt', '\n'.join(L).encode('utf-8'))
-r3 = json.loads(call('/run', json.dumps({'tz': '8'}).encode())); assert r3.get('saved_run')
+r3 = json.loads(call('/run', json.dumps({'tz': '8', 'me': '小明'}).encode())); assert r3.get('saved_run')
 assert jcall('/api/run?id=' + r3['saved_run'])['meta']['project'] == pa, 'same pair must auto-join its project'
 call('/reset', b''); call('/upload?name=early.txt', '\n'.join(E).encode('utf-8')); time.sleep(1.1)
 r4 = json.loads(call('/run', json.dumps({'tz': '8', 'ctx': {'met': 'new'}, 'project': pb}).encode())); assert r4.get('saved_run')
@@ -81,6 +81,8 @@ po = jcall('/api/projects'); by = {p['name']: p for p in po['projects']}
 assert by['小華']['n'] == 2 and by['早期對象']['n'] == 1 and not po['unassigned'], po
 assert by['小華']['latest']['digest']['mode'] == 'full' and by['小華']['latest']['digest']['future'], 'full digest missing'
 assert by['早期對象']['latest']['digest']['mode'] == 'early' and by['早期對象']['latest']['digest']['risk'].startswith('高')
+pp = jcall('/api/personal'); assert pp['n_used'] == 1 and pp['skipped'] >= 1 and pp['archetype'] and pp['runs'][0]['score'] is not None, pp
+assert '渣' not in json.dumps(pp['archetype'], ensure_ascii=False), 'no condemning labels'
 assert jcall('/api/project_rename', {'id': pb, 'name': '改名'}).get('ok')
 assert jcall('/api/project_delete', {'id': pb}).get('ok') and len(jcall('/api/projects')['unassigned']) == 1, 'delete must keep runs as unassigned'
 call('/quit', b'')

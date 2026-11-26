@@ -169,6 +169,9 @@ class H(BaseHTTPRequestHandler):
         if u.path == '/api/projects':
             if not store.load_config().get('folder'): return self._json({'folder': None, 'projects': [], 'unassigned': []})
             return self._json(dict(store.projects_overview(), folder=True))
+        if u.path == '/api/personal':
+            if not store.load_config().get('folder'): return self._json({'folder': None})
+            return self._json(dict(store.personal_profile(), folder=True, projects=[{'id': x['id'], 'name': x['name']} for x in store._pj_load()]))
         if u.path == '/api/run':
             r = store.load_run(q.get('id', [''])[0]); return self._json(r if r else {'error': '找不到這筆紀錄'}, 200 if r else 404)
         if u.path == '/api/compare':

@@ -84,6 +84,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
   <button data-v="fore" disabled><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8v4h2V4h-7v2h4l-7 7-4-4-8 8z"/></svg><span>未來預測</span></button>
   <button data-v="chart" disabled><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg><span>圖表</span></button>
   <button data-v="proj"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/></svg><span>多對象對比</span></button>
+  <button data-v="me"><svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0-4.5-4.5A4.5 4.5 0 0 0 12 12zm0 2.2c-3 0-9 1.5-9 4.5V21h18v-2.3c0-3-6-4.5-9-4.5z"/></svg><span>個人檔案</span></button>
   <button data-v="hist"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.9 3.9L9 12H6a7 7 0 1 1 2.1 5l-1.4 1.4A9 9 0 1 0 13 3zm-1 5v5l4.3 2.5.7-1.2-3.5-2V8z"/></svg><span>歷史紀錄</span></button>
   <button data-v="exp" disabled><svg viewBox="0 0 24 24"><path d="M12 3v10.2l3.6-3.6L17 11l-5 5-5-5 1.4-1.4 3.6 3.6V3zM5 18h14v3H5z"/></svg><span>匯出</span></button>
  </nav>
@@ -120,6 +121,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
  <section class="view" id="v-fore"></section>
  <section class="view" id="v-chart"></section>
  <section class="view" id="v-proj"></section>
+ <section class="view" id="v-me"></section>
  <section class="view" id="v-hist"></section>
  <section class="view" id="v-exp"></section>
 </main>
@@ -131,7 +133,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 setInterval(()=>api('/ping').catch(()=>{}),4000);api('/ping');
 function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));$('main').scrollTop=0}
-$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(b.dataset.v);if(b.dataset.v==='hist')loadHist();if(b.dataset.v==='proj')loadProj()}};
+$('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(b.dataset.v);if(b.dataset.v==='hist')loadHist();if(b.dataset.v==='proj')loadProj();if(b.dataset.v==='me')loadMe()}};
 $('quit').onclick=async()=>{if(confirm('結束程式？分析結果會一併清除。')){await api('/quit',{method:'POST'}).catch(()=>{});document.body.innerHTML='<div class="empty" style="width:100%"><b>已結束</b>可以關閉這個視窗。</div>'}};
 $('drop').onclick=()=>$('file').click();
 ['dragover','dragenter'].forEach(e=>$('drop').addEventListener(e,ev=>{ev.preventDefault();$('drop').classList.add('on')}));
@@ -284,6 +286,26 @@ async function loadProj(){const el=$('v-proj');await fillProj();const r=PJ;
  el.querySelectorAll('.prn').forEach(b=>b.onclick=async()=>{const n=prompt('新的名稱',b.dataset.n);if(n){const x=await J('/api/project_rename',{id:b.dataset.id,name:n});if(x.error||x.ok===false)alert('無法改名（名稱空白或重複）');loadProj()}});
  el.querySelectorAll('.pdel').forEach(b=>b.onclick=async()=>{if(confirm('刪除這個對象？裡面的紀錄不會被刪，會變成「未分組」。')){await J('/api/project_delete',{id:b.dataset.id});PSEL=null;loadProj()}});
  el.querySelectorAll('.asg').forEach(s=>s.onchange=async()=>{await J('/api/run_assign',{id:s.dataset.id,project:s.value});loadProj()})}
+async function loadMe(){const el=$('v-me'),r=await J('/api/personal');
+ let g='<div class="hero plain"><div><h1>個人檔案</h1><div class="meta">從你這一側的行為，看你在這些聊天裡的經營方式，以及隨時間的變化</div></div></div><div class="body">';
+ if(!r.folder){el.innerHTML=g+'<div class="empty"><b>還沒有選儲存位置</b>到「開始分析」頁最下方選一個資料夾，累積紀錄後這裡才有東西可看。</div></div>';return}
+ if(!r.n_used){el.innerHTML=g+'<div class="empty"><b>還沒有可用的紀錄</b>分析時要填「你的名字」（和聊天室顯示的名字相同），才知道哪一側是你；而且只支援兩人聊天。'+(r.n_runs?'目前 '+r.n_runs+' 筆紀錄都缺少這個資訊。':'')+'</div></div>';return}
+ const A=r.archetype,PCs={};(r.projects||[]).forEach((p,i)=>PCs[p.id]=PC[i%PC.length]);const col=id=>PCs[id]||'#b3b3b3';
+ g+='<div class="card" style="max-width:760px;border-left:4px solid #1ed760"><span>目前的傾向（啟發式，玩笑成分高）</span><b style="margin:6px 0 8px;font-size:34px">'+esc(A.label)+'</b><div style="color:#fff">'+esc(A.tagline)+'</div><ul style="margin:12px 0 0;padding-left:18px;color:var(--mute);font-size:13.5px">'+A.evidence.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul></div>';
+ g+='<div class="alert" style="margin-top:14px"><h3>怎麼看這個標籤</h3><div>這只描述「你在這幾段聊天裡看得到的行為」，不是性格，也不是道德評價。看不到你的動機、對方知不知情、有沒有見面或打電話，也不知道哪些其實只是朋友。標籤規則和門檻是我們自己定的，沒有用台灣資料驗證過；段數越少越不穩。我刻意不用「渣男」這種帶定罪意味的字。</div></div>';
+ const ov=r.overall||[];
+ g+='<div class="cards" style="margin-top:14px"><div class="card"><b>'+A.avg_score+'</b><span>你這側的經營分<br>（0–100，啟發式）</span></div><div class="card"><b>'+r.n_used+'</b><span>納入的紀錄</span></div><div class="card"><b>'+A.active+'</b><span>目前同時活躍的關係</span></div>'+(r.slope_label?'<div class="card"><b>'+esc(r.slope_label)+'</b><span>經營分趨勢<br>'+(r.slope_per_30d>0?'+':'')+r.slope_per_30d+' 分／30 天</span></div>':'')+'</div>';
+ if(r.skipped)g+='<p class="note">另有 '+r.skipped+' 筆紀錄沒納入（沒填你的名字、群組，或資料太少算不出經營分）。</p>';
+ const xs=r.runs.map(q=>D(q.end)),a=Math.min(...xs),b=Math.max(...xs)||a+1,pad=a===b?3:0;
+ g+='<h2>你的進步曲線（以聊天發生的日期為準）</h2><p class="sub">白線＝各對象「到那天為止最新一筆」的平均；彩色點＝各對象。經營分由四項組成：回覆及時（30）、回應對方的邀請與提問（30）、主動平衡（20）、表達投入（20）。它量的是互動的「可靠度」，不是魅力，也不保證關係會成功。</p>';
+ const byp={};r.runs.forEach(q=>(byp[q.project]=byp[q.project]||[]).push(q));
+ const nm={};r.runs.forEach(q=>nm[q.project]=q.name);const ids=Object.keys(byp);
+ const mk=f=>ids.map(id=>({c:col(id),pts:byp[id].map(q=>[D(q.end),f(q)]),dots:true}));
+ const sers=[{c:'#ffffff',pts:ov.map(o=>[D(o.date),o.score]),dots:false}].concat(mk(q=>q.score));
+ g+='<div style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 8px;font-size:13px"><span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:#fff;margin-right:6px"></i>整體</span>'+ids.map(id=>'<span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:'+col(id)+';margin-right:6px"></i>'+esc(nm[id])+'</span>').join('')+'</div>'+lineChart(900,260,sers,{xmin:a-pad,xmax:b+pad,ymin:0,ymax:100,xf:dfmt,yf:v=>Math.round(v)});
+ g+='<h2>各專案的進步曲線（親密度）</h2><p class="sub">同樣以日期為橫軸；同一個對象要有兩筆以上紀錄才會有線。</p>'+lineChart(900,260,mk(q=>q.closeness),{xmin:a-pad,xmax:b+pad,ymin:0,ymax:100,xf:dfmt,yf:v=>Math.round(v)});
+ g+='<h2>各專案進步一覽</h2><div style="overflow-x:auto"><table class="hist cmp"><tr><th>對象</th><th>紀錄數</th><th>期間</th><th>你的經營分</th><th>親密度</th><th>最近 4 週量／高峰</th></tr>'+r.progress.map(p=>{const d1=p.score_last-p.score_first,d2=p.closeness_last-p.closeness_first,sg=v=>v>0?'up':v<0?'dn':'';return '<tr class="row"><td style="color:'+col(p.project)+'">'+esc(p.name)+'</td><td>'+p.n+'</td><td>'+(p.days?p.days+' 天':'—')+'</td><td>'+(p.n>1?p.score_first+' → '+p.score_last+' <b class="'+sg(d1)+'">('+(d1>0?'+':'')+d1+')</b>':p.score_last)+'</td><td>'+(p.n>1?p.closeness_first+' → '+p.closeness_last+' <b class="'+sg(d2)+'">('+(d2>0?'+':'')+d2+')</b>':p.closeness_last)+'</td><td>'+(p.last.ratio!=null?Math.round(100*p.last.ratio)+'%':'—')+'</td></tr>'}).join('')+'</table></div><p class="note">綠色＝上升、紅色＝下降。分數變化在 5 分內不要過度解讀；紀錄少、聊天量小的時候，曲線的起伏大多是雜訊。</p>';
+ el.innerHTML=g+'</div>'}
 function legendHtml(sel){return '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0 8px;font-size:13px">'+sel.map(x=>'<span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:'+x.c+';margin-right:6px"></i>'+esc(x.p.name)+'</span>').join('')+'</div>'}
 loadStore().then(fillProj);
 document.addEventListener('click',e=>{const i=e.target.closest('.imgs img');if(i){$('lbimg').src=i.src;$('lb').classList.add('on')}else if(e.target.closest('#lb'))$('lb').classList.remove('on')});
