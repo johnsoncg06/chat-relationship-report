@@ -13,6 +13,8 @@ env:
   PYI_COMMON: >-
     --noconfirm --windowed --name ChatRelationshipReport --icon assets/icon.png
     --exclude-module tkinter --exclude-module _tkinter --exclude-module numpy --exclude-module pandas --exclude-module scipy --exclude-module matplotlib --exclude-module PIL
+    --exclude-module unittest --exclude-module doctest --exclude-module pydoc --exclude-module pydoc_data --exclude-module pdb --exclude-module bdb --exclude-module cmd --exclude-module code --exclude-module codeop --exclude-module rlcompleter --exclude-module readline
+    --exclude-module asyncio --exclude-module concurrent --exclude-module multiprocessing --exclude-module xmlrpc --exclude-module ftplib --exclude-module netrc --exclude-module lzma --exclude-module bz2 --exclude-module ssl --exclude-module _ssl --exclude-module curses --exclude-module lib2to3 --exclude-module distutils --exclude-module ensurepip --exclude-module idlelib --exclude-module turtle --exclude-module sqlite3
 jobs:
   version:
     runs-on: ubuntu-latest
@@ -40,15 +42,22 @@ jobs:
       - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
       - run: pip install pyinstaller pillow
+      - name: 基準（不打包，直接用原始碼跑一次煙霧測試，記下分數與預測）
+        shell: bash
+        run: |
+          CHATREL_HOME="$RUNNER_TEMP/chatrel_src" CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 python app.py > src.log 2>&1 &
+          GOLD_FILE="$RUNNER_TEMP/gold.json" timeout 240 python tests/smoke.py 8799 smoke
       - name: PyInstaller (onedir)
         shell: bash
-        run: pyinstaller $PYI_COMMON --onedir --add-data "scripts;scripts" --add-data "web;web" app.py
+        run: |
+          pyinstaller $PYI_COMMON --onedir --add-data "scripts;scripts" --add-data "web;web" app.py
+          echo "== dist 大小 =="; du -sk dist/ChatRelationshipReport | awk '{printf "dist: %.1f MB\n", $1/1024}'
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         shell: bash
         run: |
           CHATREL_HOME="$RUNNER_TEMP/chatrel" CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe > app.log 2>&1 &
           RC=0
-          timeout 240 python tests/smoke.py 8799 smoke > smoke.log 2>&1 || RC=$?
+          GOLD_FILE="$RUNNER_TEMP/gold.json" timeout 240 python tests/smoke.py 8799 smoke > smoke.log 2>&1 || RC=$?
           taskkill //F //IM ChatRelationshipReport.exe > /dev/null 2>&1 || true
           cat smoke.log
           if [ "$RC" -ne 0 ]; then
@@ -91,12 +100,18 @@ jobs:
       - uses: actions/setup-python@v6
         with: { python-version: '3.12' }
       - run: pip install pyinstaller pillow
+      - name: 基準（不打包，直接用原始碼跑一次煙霧測試，記下分數與預測）
+        run: |
+          CHATREL_HOME="$RUNNER_TEMP/chatrel_src" CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 python app.py > src.log 2>&1 &
+          GOLD_FILE="$RUNNER_TEMP/gold.json" python tests/smoke.py 8799 smoke
       - name: PyInstaller (.app)
-        run: pyinstaller $PYI_COMMON --onedir --osx-bundle-identifier io.github.johnsoncg06.chatrelationshipreport --add-data "scripts:scripts" --add-data "web:web" app.py
+        run: |
+          pyinstaller $PYI_COMMON --onedir --osx-bundle-identifier io.github.johnsoncg06.chatrelationshipreport --add-data "scripts:scripts" --add-data "web:web" app.py
+          du -sk dist/ChatRelationshipReport.app | awk '{printf "app: %.1f MB\n", $1/1024}'
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         run: |
           CHATREL_HOME="$RUNNER_TEMP/chatrel" CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport > app.log 2>&1 &
-          python tests/smoke.py 8799 smoke || { echo '--- app.log ---'; cat app.log; exit 1; }
+          GOLD_FILE="$RUNNER_TEMP/gold.json" python tests/smoke.py 8799 smoke || { echo '--- app.log ---'; cat app.log; exit 1; }
       - name: Build .dmg
         run: |
           mkdir dmgroot && cp -R dist/ChatRelationshipReport.app dmgroot/ && ln -s /Applications dmgroot/Applications

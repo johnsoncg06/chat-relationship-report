@@ -34,6 +34,18 @@ assert 'calls' in d['stats']
 cx = sc.get('context'); assert cx and cx['met'] == 'online_blind_date' and len(cx['notes']) == 3 and cx['adjustments'], cx
 assert d['forecast'].get('caveats') and any('剛失戀' in c for c in d['forecast']['caveats']), d['forecast'].get('caveats')
 assert d.get('forecast') and d['forecast'].get('scenarios'), 'forecast missing: ' + str(d.get('notes'))
+GOLD = {'closeness': d['score']['closeness'], 'romantic': d['score']['romantic_signal'], 'dims': d['score']['dimensions'], 'band': d['score']['band'], 'total': d['stats']['total'],
+        'fade': d['forecast']['fade_risk_4wk'], 'scen': {k: v['point'] for k, v in d['forecast']['scenarios'].items()}}
+print('GOLD ' + json.dumps(GOLD, ensure_ascii=False, sort_keys=True))
+import os as _os
+_gf = _os.environ.get('GOLD_FILE')   # CI：先用原始碼跑一次寫入基準，打包後的 App 再跑一次比對，確保精簡／打包不改變任何分數與預測
+if _gf:
+    if not _os.path.isfile(_gf): open(_gf, 'w', encoding='utf-8').write(json.dumps(GOLD, ensure_ascii=False, sort_keys=True))
+    else:
+        base = json.load(open(_gf, encoding='utf-8'))
+        for k in ('closeness', 'romantic', 'dims', 'band', 'total'): assert base[k] == GOLD[k], f'packaged result differs from source: {k}: {base[k]} vs {GOLD[k]}'
+        assert abs(base['fade'] - GOLD['fade']) <= .05 and all(abs(base['scen'][k] - GOLD['scen'][k]) <= 4 for k in base['scen']), 'forecast differs from source build'
+        print('PARITY OK (packaged == source)')
 assert len(d['images']) >= 5, d['images']
 mo = d.get('monthly'); assert mo and len(mo['months']) >= 2 and all(m.get('title') for m in mo['months']), 'monthly recap missing'
 assert sum(m['total'] for m in mo['months']) == d['stats']['total'], 'monthly totals must add up to total messages'
