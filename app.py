@@ -177,10 +177,11 @@ class H(BaseHTTPRequestHandler):
             return self._json({'folder': c.get('folder'), 'default_folder': store.default_folder(), 'auto_save': c.get('auto_save', True) if c.get('folder') else False,
                                'runs': store.list_runs(), 'backtest': store.backtest() if c.get('folder') else None})
         if u.path == '/api/ask_cfg':
-            c = store.load_config(); k = c.get('api_key', '')
+            c = store.load_config(); k = c.get('api_key', ''); pv = c.get('api_provider') or (llm.detect(k) or 'anthropic')
             try: import ssl; tls = True   # 打包版必須帶 ssl，否則連不上 HTTPS API
             except Exception: tls = False
-            return self._json({'tls': tls, 'has_key': bool(k), 'masked': llm.mask(k), 'model': c.get('api_model') or llm.DEFAULT_MODEL, 'models': llm.MODELS,
+            return self._json({'tls': tls, 'has_key': bool(k), 'masked': llm.mask(k), 'provider': pv, 'provider_label': llm.LABEL[pv],
+                               'model': c.get('api_model') if c.get('api_model_for') == pv and c.get('api_model') else llm.DEFAULT[pv], 'models': llm.MODELS[pv],
                                'has_result': os.path.isfile(os.path.join(WORK, 'out', 'score.json'))})
         if u.path == '/api/projects':
             if not store.load_config().get('folder'): return self._json({'folder': None, 'projects': [], 'unassigned': []})
@@ -244,10 +245,14 @@ class H(BaseHTTPRequestHandler):
                 c = store.load_config()
                 if 'api_key' in req:
                     k = (req.get('api_key') or '').strip()
-                    if k and not re.match(r'^sk-[\w-]{20,}$', k): return self._json({'error': 'Key 格式不對（應以 sk- 開頭）'}, 400)
-                    if k: c['api_key'] = k
-                    else: c.pop('api_key', None)
-                if req.get('model'): c['api_model'] = str(req['model'])[:60]
+                    if k:
+                        pv = llm.detect(k)
+                        if not pv: return self._json({'error': 'Key 格式不對：Anthropic 的 Key 以 sk- 開頭，Google Gemini 的以 AIza 開頭'}, 400)
+                        c['api_key'] = k; c['api_provider'] = pv; c.pop('api_model', None); c.pop('api_model_for', None)
+                    else:
+                        for x in ('api_key', 'api_provider', 'api_model', 'api_model_for'): c.pop(x, None)
+                if req.get('model') and c.get('api_key'):
+                    c['api_model'] = re.sub(r'[^\w.\-]', '', str(req['model']))[:60]; c['api_model_for'] = c.get('api_provider')
                 store.save_config(c); return self._json({'ok': True, 'masked': llm.mask(c.get('api_key', ''))})
             if u.path == '/api/ask':
                 c = store.load_config(); k = c.get('api_key', '')
@@ -256,8 +261,9 @@ class H(BaseHTTPRequestHandler):
                 if not q: return self._json({'error': '請輸入問題'}, 400)
                 bc = llm.build_context(os.path.join(WORK, 'out'))
                 if not bc: return self._json({'error': '還沒有分析結果，請先在「開始分析」匯入聊天記錄'}, 400)
+                pv = c.get('api_provider') or (llm.detect(k) or 'anthropic')
                 try:
-                    ans, use = llm.ask(k, c.get('api_model') or llm.DEFAULT_MODEL, bc[0], q, req.get('history'))
+                    ans, use = llm.ask(pv, k, c.get('api_model') if c.get('api_model_for') == pv else None, bc[0], q, req.get('history'))
                     return self._json({'answer': ans, 'usage': use, 'sent_chars': len(bc[0])})
                 except RuntimeError as e: return self._json({'error': str(e)}, 502)
             if u.path == '/api/auto_save':

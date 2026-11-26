@@ -121,8 +121,9 @@ SEEN = {}
 class _Mock(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_POST(self):
-        b = json.loads(self.rfile.read(int(self.headers['Content-Length']))); SEEN['key'] = self.headers.get('x-api-key'); SEEN['body'] = json.dumps(b, ensure_ascii=False)
-        out = json.dumps({'content': [{'type': 'text', 'text': '分數是 72'}], 'usage': {'input_tokens': 1, 'output_tokens': 1}}).encode()
+        b = json.loads(self.rfile.read(int(self.headers['Content-Length']))); SEEN['key'] = self.headers.get('x-api-key') or self.headers.get('x-goog-api-key'); SEEN['body'] = json.dumps(b, ensure_ascii=False); SEEN['path'] = self.path
+        if ':generateContent' in self.path: out = json.dumps({'candidates': [{'content': {'parts': [{'text': 'G分數是 72'}]}}], 'usageMetadata': {'promptTokenCount': 1, 'candidatesTokenCount': 1}}).encode()
+        else: out = json.dumps({'content': [{'type': 'text', 'text': '分數是 72'}], 'usage': {'input_tokens': 1, 'output_tokens': 1}}).encode()
         self.send_response(200); self.send_header('Content-Type', 'application/json'); self.send_header('Content-Length', str(len(out))); self.end_headers(); self.wfile.write(out)
 _srv = http.server.HTTPServer(('127.0.0.1', 8798), _Mock); threading.Thread(target=_srv.serve_forever, daemon=True).start()
 ac = jcall('/api/ask_cfg'); assert ac['tls'] and not ac['has_key'] and ac['has_result'], ac
@@ -135,6 +136,11 @@ assert jcall('/api/ask_cfg', {'api_key': KEY}).get('ok') and jcall('/api/ask_cfg
 ans = jcall('/api/ask', {'question': '分數是多少？', 'history': []}); assert ans['answer'] == '分數是 72' and SEEN['key'] == KEY
 assert '分數是多少' in SEEN['body'] and 'closeness' in SEEN['body'], 'context must carry computed numbers'
 assert '小明' not in SEEN['body'] and '小華' not in SEEN['body'], 'names must be pseudonymised before sending'
+assert jcall('/api/ask_cfg')['provider'] == 'anthropic'
+GK = 'AIza' + 'y' * 35
+assert jcall('/api/ask_cfg', {'api_key': GK}).get('ok') and jcall('/api/ask_cfg')['provider'] == 'gemini' and jcall('/api/ask_cfg')['model'] == 'gemini-2.5-flash'
+g = jcall('/api/ask', {'question': '分數是多少？'}); assert g['answer'] == 'G分數是 72' and SEEN['key'] == GK and ':generateContent' in SEEN['path'] and 'gemini-2.5-flash' in SEEN['path'], SEEN
+assert '小明' not in SEEN['body'] and 'closeness' in SEEN['body']
 assert jcall('/api/ask_cfg', {'api_key': ''}).get('ok') and not jcall('/api/ask_cfg')['has_key']
 call('/quit', b'')
 print('SMOKE OK closeness=%s' % d['score']['closeness'])

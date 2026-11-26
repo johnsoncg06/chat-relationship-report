@@ -157,11 +157,11 @@ $('nav').onclick=e=>{const b=e.target.closest('button');if(b&&!b.disabled){show(
 
 let ASKH=[];
 async function loadAsk(){const el=$('v-ask');const c=await(await api('/api/ask_cfg')).json();
- const keyHtml=c.has_key?'<p class="sub">已設定 Key：<b>'+esc(c.masked)+'</b>　<button class="mini" id="akchg">更換</button> <button class="mini" id="akdel">移除</button></p>'
-  :'<div class="grp"><b>解鎖問答：貼上你自己的 Anthropic API Key</b><p class="sub" style="margin:6px 0 10px">Key 只存在這台電腦的設定檔，不會上傳到別處；問答的費用由你的 API 帳戶負擔。到 console.anthropic.com 建立 Key。</p><div class="askbar"><input id="akin" type="password" placeholder="sk-ant-…" autocomplete="off"><button class="go" id="aksave" style="padding:10px 26px">解鎖</button></div></div>';
- const sel='<label class="sub">模型　<select id="akmodel">'+c.models.map(m=>'<option'+(m===c.model?' selected':'')+'>'+m+'</option>').join('')+'</select></label>';
+ const keyHtml=c.has_key?'<p class="sub">已設定 '+esc(c.provider_label)+' Key：<b>'+esc(c.masked)+'</b>　<button class="mini" id="akchg">更換</button> <button class="mini" id="akdel">移除</button></p>'
+  :'<div class="grp"><b>解鎖問答：貼上你自己的 API Key（Claude 或 Gemini）</b><p class="sub" style="margin:6px 0 10px">Key 只存在這台電腦的設定檔，不會上傳到別處；問答的費用由你的 API 帳戶負擔。支援 Anthropic（sk- 開頭）與 Google Gemini（AIza 開頭），會自動判斷；Key 可在 console.anthropic.com 或 aistudio.google.com 建立。</p><div class="askbar"><input id="akin" type="password" placeholder="sk-ant-… 或 AIza…" autocomplete="off"><button class="go" id="aksave" style="padding:10px 26px">解鎖</button></div></div>';
+ const sel='<label class="sub">模型　<input id="akmodel" list="akml" value="'+esc(c.model)+'" style="width:260px"></label><datalist id="akml">'+c.models.map(m=>'<option value="'+m+'">').join('')+'</datalist>';
  el.innerHTML='<div class="hero plain"><h1>問答</h1><p class="sub">用自然語言問你的分析結果，例如「為什麼分數偏低？」「接下來該怎麼做？」</p></div>'+keyHtml+
- '<div class="alert" style="margin:10px 0"><b>隱私：</b>只會送出已算好的統計數字、分數、預測與提醒（名字換成「我／對方」，證據原文片段已移除），<b>不會送聊天原文</b>。數字由程式計算，AI 只負責解讀，可能會出錯，請當參考。</div>'+
+ '<div class="alert" style="margin:10px 0"><b>隱私：</b>只會送出已算好的統計數字、分數、預測與提醒（名字換成「我／對方」，證據原文片段已移除），<b>不會送聊天原文</b>。數字由程式計算，AI 只負責解讀，可能會出錯，請當參考。送到哪一家，就適用那一家的資料政策。</div>'+
  (c.has_key?sel:'')+
  (c.has_key?(c.has_result?'<div class="sug">'+['這段關係目前是什麼狀態？','分數最拖累的是哪一項？','預測可信嗎？有哪些限制？','我該怎麼做比較好？'].map(q=>'<button>'+q+'</button>').join('')+'</div>':'<div class="empty"><b>還沒有分析結果</b>先到「開始分析」匯入聊天記錄，再回來提問。</div>'):'')+
  '<div class="qa" id="qa"></div>'+(c.has_key&&c.has_result?'<div class="askbar"><input id="aq" placeholder="輸入問題，按 Enter 送出"><button class="go" id="asend" style="padding:10px 26px">送出</button></div>':'');

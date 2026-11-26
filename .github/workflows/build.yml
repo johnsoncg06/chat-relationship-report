@@ -45,7 +45,7 @@ jobs:
       - name: 基準（不打包，直接用原始碼跑一次煙霧測試，記下分數與預測）
         shell: bash
         run: |
-          CHATREL_HOME="$RUNNER_TEMP/chatrel_src" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 PORT=8799 python app.py > src.log 2>&1 &
+          CHATREL_HOME="$RUNNER_TEMP/chatrel_src" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 CHATREL_GEMINI_BASE=http://127.0.0.1:8798 PORT=8799 python app.py > src.log 2>&1 &
           GOLD_FILE="$RUNNER_TEMP/gold.json" timeout 240 python tests/smoke.py 8799 smoke
       - name: PyInstaller (onedir)
         shell: bash
@@ -55,7 +55,7 @@ jobs:
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         shell: bash
         run: |
-          CHATREL_HOME="$RUNNER_TEMP/chatrel" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe > app.log 2>&1 &
+          CHATREL_HOME="$RUNNER_TEMP/chatrel" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 CHATREL_GEMINI_BASE=http://127.0.0.1:8798 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe > app.log 2>&1 &
           RC=0
           GOLD_FILE="$RUNNER_TEMP/gold.json" timeout 240 python tests/smoke.py 8799 smoke > smoke.log 2>&1 || RC=$?
           taskkill //F //IM ChatRelationshipReport.exe > /dev/null 2>&1 || true
@@ -102,7 +102,7 @@ jobs:
       - run: pip install pyinstaller pillow
       - name: 基準（不打包，直接用原始碼跑一次煙霧測試，記下分數與預測）
         run: |
-          CHATREL_HOME="$RUNNER_TEMP/chatrel_src" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 PORT=8799 python app.py > src.log 2>&1 &
+          CHATREL_HOME="$RUNNER_TEMP/chatrel_src" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 CHATREL_GEMINI_BASE=http://127.0.0.1:8798 PORT=8799 python app.py > src.log 2>&1 &
           GOLD_FILE="$RUNNER_TEMP/gold.json" python tests/smoke.py 8799 smoke
       - name: PyInstaller (.app)
         run: |
@@ -110,7 +110,7 @@ jobs:
           du -sk dist/ChatRelationshipReport.app | awk '{printf "app: %.1f MB\n", $1/1024}'
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         run: |
-          CHATREL_HOME="$RUNNER_TEMP/chatrel" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport > app.log 2>&1 &
+          CHATREL_HOME="$RUNNER_TEMP/chatrel" CHATREL_TOKEN=smoke NO_BROWSER=1 CHATREL_API_BASE=http://127.0.0.1:8798 CHATREL_GEMINI_BASE=http://127.0.0.1:8798 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport > app.log 2>&1 &
           GOLD_FILE="$RUNNER_TEMP/gold.json" python tests/smoke.py 8799 smoke || { echo '--- app.log ---'; cat app.log; exit 1; }
       - name: Build .dmg
         run: |
