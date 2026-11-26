@@ -7,6 +7,19 @@ from datetime import datetime, timedelta, timezone
 from math import comb
 
 DATE_RE = re.compile(r'^(\d{4})[/.\-年](\d{1,2})[/.\-月](\d{1,2})')
+DATE_US = re.compile(r'^(?:[A-Za-z]{3,9},?\s+)?(\d{1,2})/(\d{1,2})/(\d{4})\s*$')          # Sat, 11/21/2026（英文版 LINE）
+DATE_EN = re.compile(r'^(?:[A-Za-z]{3,9},\s*)?([A-Za-z]{3,9})\.?\s+(\d{1,2}),\s*(\d{4})\s*$')   # Saturday, November 21, 2026
+MONTHS = {m: i + 1 for i, m in enumerate(['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'])}
+def parse_date(line):
+    line = line.strip()
+    d = DATE_RE.match(line)
+    if d and '\t' not in line: return datetime(int(d[1]), int(d[2]), int(d[3]))
+    if '\t' in line: return None
+    d = DATE_US.match(line)
+    if d: return datetime(int(d[3]), int(d[1]), int(d[2]))
+    d = DATE_EN.match(line)
+    if d and d[1][:3].lower() in MONTHS: return datetime(int(d[3]), MONTHS[d[1][:3].lower()], int(d[2]))
+    return None
 MSG_RE = re.compile(r'^(上午|下午|AM|PM)?\s?(\d{1,2}):(\d{2})\s?(AM|PM)?\t([^\t]+)\t(.*)$')
 SYS_RE = re.compile(r'^(上午|下午|AM|PM)?\s?\d{1,2}:\d{2}\s?(AM|PM)?\t')
 LINE_KIND = [('sticker', r'^\[?(貼圖|Sticker)\]?$'), ('photo', r'^\[?(照片|Photo)\]?$'), ('video', r'^\[?(影片|Video)\]?$'),
@@ -35,9 +48,8 @@ def parse_line(path):
     msgs, cur_date, last = [], None, None
     for raw in open(path, encoding='utf-8-sig', errors='ignore'):
         line = raw.rstrip('\n').rstrip('\r')
-        d = DATE_RE.match(line)
-        if d and '\t' not in line:
-            cur_date = datetime(int(d[1]), int(d[2]), int(d[3])); continue
+        d = parse_date(line)
+        if d: cur_date = d; continue
         m = MSG_RE.match(line)
         if m and cur_date:
             ap1, h, mi, ap2, name, text = m.groups(); h = int(h); ap = ap1 or ap2
@@ -286,11 +298,70 @@ def main():
         picked.sort()
         json.dump([{'id': j, 'ts': str(T[i]['t']), 'who': T[i]['who'], 'text': T[i]['text'][:200]} for j, i in enumerate(picked)],
                   open(a.sample_out, 'w'), ensure_ascii=False, indent=1)
+
+    # ---- 風格同步／we-talk／節奏相似度／結構化對話偵測（實驗性：研究多為英語情侶，中文效度未驗證）----
+    STYLE = {   # 中文虛詞／語氣的代理類別（Ireland 等人的 LSM 英文用虛詞，這裡是華語近似版）
+        '我': r'我|咱', '你': r'你|妳|您', '語氣詞': r'[啊啦喔哦欸耶吧呢嘛唷囉喔哈]', '否定': r'不|沒|別|無',
+        '程度副詞': r'超|很|真的|太|非常|有夠|爆', '疑問': r'嗎|什麼|怎麼|為什麼|哪|誰', '連接詞': r'然後|但|可是|而且|因為|所以|如果',
+        '延長與驚嘆': r'[～~！!…]'}
+    if len(P) == 2:
+        TP = {p: [m for m in T if m['who'] == p] for p in P}
+        def rates(msgs):
+            n_ch = max(1, sum(len(m['text']) for m in msgs))
+            return {k: 100 * sum(len(re.findall(v, m['text'])) for m in msgs) / n_ch for k, v in STYLE.items()}
+        def lsm(ra, rb): return {k: 1 - abs(ra[k] - rb[k]) / (ra[k] + rb[k] + 0.0001) for k in STYLE}
+        if min(len(v) for v in TP.values()) >= 100:
+            ra, rb = rates(TP[P[0]]), rates(TP[P[1]]); per = lsm(ra, rb)
+            sty = {'lsm': round(100 * st.mean(per.values())), 'per_category': {k: round(100 * v) for k, v in per.items()}}
+            half = lambda L, lo, hi: [m for m in L if lo <= m['t'] < hi]
+            if len(T) >= 400:
+                h1 = {p: half(TP[p], M[0]['t'], mid) for p in P}; h2 = {p: half(TP[p], mid, M[-1]['t'] + timedelta(seconds=1)) for p in P}
+                if all(len(v) >= 60 for v in list(h1.values()) + list(h2.values())):
+                    sty['lsm_first_half'] = round(100 * st.mean(lsm(rates(h1[P[0]]), rates(h1[P[1]])).values()))
+                    sty['lsm_second_half'] = round(100 * st.mean(lsm(rates(h2[P[0]]), rates(h2[P[1]])).values()))
+            out['style_matching'] = sty
+        WE = re.compile(r'我們|咱們|我倆|咱倆|我跟你|我跟妳'); I_ = re.compile(r'我(?!們)')
+        we = {p: sum(len(WE.findall(m['text'])) for m in TP[p]) for p in P}; iw = {p: sum(len(I_.findall(m['text'])) for m in TP[p]) for p in P}
+        out['we_talk'] = {p: {'we_per_100_msgs': round(100 * we[p] / max(1, len(TP[p])), 2), 'we_share_of_we_plus_i': round(we[p] / (we[p] + iw[p]), 3) if we[p] + iw[p] else None} for p in P}
+        out['we_talk_note'] = '「我們」可能指雙方，也可能指實驗室、家人或朋友團體；只有讀證據原文後才能判斷是不是「二人我們」。研究（多為英語情侶）認為 we-talk 與關係品質相關，但方向與因果未定。'
+        # 節奏相似度：單則長度、連發比例、活躍時段重疊
+        ln = {p: st.mean(min(len(m['text']), 100) for m in TP[p]) for p in P if TP[p]}
+        mpp = {p: sum(1 for m in M if m['who'] == p) for p in P}
+        bur = {p: dbl.get(p, 0) / max(1, mpp[p]) for p in P}
+        hr = {p: [sum(1 for m in M if m['who'] == p and m['t'].hour == h) / max(1, mpp[p]) for h in range(24)] for p in P}
+        sim_len = 1 - abs(ln[P[0]] - ln[P[1]]) / (ln[P[0]] + ln[P[1]]) if len(ln) == 2 else None
+        sim_bur = 1 - abs(bur[P[0]] - bur[P[1]]) / (bur[P[0]] + bur[P[1]] + 1e-4)
+        sim_hr = sum(min(a_, b_) for a_, b_ in zip(hr[P[0]], hr[P[1]]))
+        parts = [x for x in (sim_len, sim_bur, sim_hr) if x is not None]
+        out['rhythm_similarity'] = {'score': round(100 * st.mean(parts)), 'length': round(100 * sim_len) if sim_len is not None else None,
+                                    'burst': round(100 * sim_bur), 'active_hours_overlap': round(100 * sim_hr)}
+    # 結構化對話：輪流發問、遊戲規則、活動任務會讓問號、主動、頻率等指標由規則帶動，而不是由興趣帶動
+    TURN = re.compile(r'換[你妳我他她]|輪到[你妳我]|[你妳我]先問|[你妳我]問[吧啦]|換誰[問]|your turn', re.I)
+    turn_msgs = [m for m in T if TURN.search(m['text'])]
+    per100 = 100 * len(turn_msgs) / max(1, len(T))
+    out['structured_chat'] = {'turn_taking_phrases': len(turn_msgs), 'per_100_text_msgs': round(per100, 2),
+                              'flag': len(turn_msgs) >= 8 and per100 >= 0.4,
+                              'examples': [f"{m['t']:%Y-%m-%d %H:%M} {m['who']}：{m['text'][:40]}" for m in turn_msgs[:4]]}
+    # 結論附證據：每個結論給幾則原文，使用者可以自己檢驗詮釋（資料只在本機）
+    ev = {}
+    def pick(label, pred, n=3):
+        got = [m for m in T if pred(m)][:n]
+        if got: ev[label] = [f"{m['t']:%Y-%m-%d %H:%M} {m['who']}：{m['text'][:50]}" for m in got]
+    sess_starts, prev_ = [], None
+    for m in M:
+        if m['kind'] == 'text' and (prev_ is None or m['t'] - prev_['t'] >= timedelta(hours=a.gap)): sess_starts.append(m)
+        prev_ = m
+    if sess_starts: ev['開話題（對話段開頭）'] = [f"{m['t']:%Y-%m-%d %H:%M} {m['who']}：{m['text'][:50]}" for m in sess_starts[:4]]
+    pick('深夜（00–05 點）互動', lambda m: m['t'].hour < 5, 3)
+    pick('我們（we-talk）', lambda m: bool(re.search(r'我們|咱們|我倆', m['text'])), 3)
+    pick('表達想念／喜歡', lambda m: bool(re.search(LEX['miss_you'] + '|' + LEX['love_you'], m['text'])), 3)
+    out['evidence'] = ev
     dc = Counter(m['t'].date() for m in M); top2 = sum(c for _, c in dc.most_common(2)) / len(M)
     warns = []
     if span < 14: warns.append(f'資料只有 {span} 天：穩定、趨勢、變點都沒有意義')
     if top2 > 0.6: warns.append(f'最忙的 2 天占全部訊息 {100*top2:.0f}%：疑似由活動／事件帶出的爆量，日常水位另看最近幾天')
     if out_excl: warns.append(f'已排除發言者（疑似機器人／系統）：{out_excl}，請確認沒有排錯人')
+    if out['structured_chat']['flag']: warns.append(f"疑似結構化對話（出現 {out['structured_chat']['turn_taking_phrases']} 次輪流發問用語）：問號、開話題、聊天頻率等指標部分由規則帶動，不等於興趣高低")
     if not out['reply_latency_reliable']: warns.append('回覆速度不可採用（同分鐘內來回或逐行傳送）')
     out['top2_days_share'] = round(top2, 3); out['warnings'] = warns
     print(json.dumps(out, ensure_ascii=False, indent=1))

@@ -70,7 +70,7 @@ ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);bord
 .spin{width:16px;height:16px;border:2px solid #444;border-top-color:var(--g);border-radius:50%;display:inline-block;vertical-align:-3px;margin-right:8px;animation:r 0.8s linear infinite}@keyframes r{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:760px){body{flex-direction:column-reverse}aside{width:auto;flex-direction:row;margin:0 8px 8px;padding:6px;border-radius:10px;overflow-x:auto}.brand,.priv,.sp,.quit span{display:none}nav{flex-direction:row}nav button span{display:none}.hero{flex-direction:column;align-items:flex-start;padding:28px 20px 20px}.body{padding:16px 20px 40px}}
-</style></head>
+details.ev{border:1px solid var(--line,#2a2a2a);border-radius:8px;padding:8px 12px;margin:6px 0}details.ev summary{cursor:pointer}.evl{font-size:13px;color:var(--sub,#b3b3b3);padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}</style></head>
 <body>
 <aside>
  <div class="brand"><svg viewBox="0 0 32 32"><circle cx="16" cy="15" r="13" fill="#1ed760"/><path d="M7 25l1-6 6 3z" fill="#1ed760"/><g fill="#000"><rect x="9" y="12" width="2.6" height="7" rx="1.3"/><rect x="13" y="9" width="2.6" height="12" rx="1.3"/><rect x="17" y="7" width="2.6" height="16" rx="1.3"/><rect x="21" y="10" width="2.6" height="10" rx="1.3"/></g></svg>聊天關係報告</div>
@@ -143,17 +143,27 @@ function render(d){
  h+='<h2>關鍵數字</h2><div class="cards"><div class="card"><b>'+s.closeness+'</b><span>親密度</span></div><div class="card"><b>'+s.romantic_signal+'</b><span>浪漫訊號</span></div><div class="card"><b>'+esc(s.romantic_direction||'—')+'</b><span>情感詞方向</span></div><div class="card"><b>'+st.total+'</b><span>訊息數</span></div><div class="card"><b>'+st.closeness_inputs.active_days+'</b><span>有聊天的天數</span></div></div>';
  if(s.dimensions)h+='<h2>五個維度</h2>'+Object.entries(s.dimensions).map(([k,v])=>'<div class="dim"><span>'+esc(k)+'</span>'+bar(v)+'<b>'+v+'</b></div>').join('');
  const ini=st.initiations,tot=Object.values(ini).reduce((a,b)=>a+b,0)||1;
- h+='<h2>誰先開話題</h2>'+Object.keys(st.people).map(k=>{const v=ini[k]||0;return '<div class="dim"><span>'+esc(k)+'</span>'+bar(Math.round(100*v/tot))+'<b>'+Math.round(100*v/tot)+'%</b></div>'}).join('')+'<p class="note">以靜默 6 小時作為新話題的門檻；只描述行為，不代表誰比較在乎。</p></div>';
+ h+='<h2>誰先開話題</h2>'+Object.keys(st.people).map(k=>{const v=ini[k]||0;return '<div class="dim"><span>'+esc(k)+'</span>'+bar(Math.round(100*v/tot))+'<b>'+Math.round(100*v/tot)+'%</b></div>'}).join('')+'<p class="note">以靜默 6 小時作為新話題的門檻；只描述行為，不代表誰比較在乎。</p>';
+ const ex=s.experimental||{},sm=ex.style_matching,rs=ex.rhythm_similarity,wt=ex.we_talk;
+ if(sm||rs||wt){h+='<h2>實驗性指標（不計入親密度）</h2><p class="sub">研究多半以英語情侶為對象，華語是否適用還沒驗證；而且只是相關，不是因果。</p><div class="cards">'+
+  (sm?'<div class="card"><b>'+sm.lsm+'</b><span>語言風格相似度'+(sm.lsm_first_half!=null?'<br>前半 '+sm.lsm_first_half+' → 後半 '+sm.lsm_second_half:'')+'</span></div>':'')+
+  (rs?'<div class="card"><b>'+rs.score+'</b><span>節奏相似度</span></div>':'')+
+  (wt?Object.entries(wt).map(([k,v])=>'<div class="card"><b>'+v.we_per_100_msgs+'</b><span>「我們」每百則 · '+esc(k)+'</span></div>').join(''):'')+'</div>';
+  if(st.we_talk_note)h+='<p class="note">'+esc(st.we_talk_note)+'</p>'}
+ const ev=s.evidence;
+ if(ev&&Object.keys(ev).length)h+='<h2>證據：原文片段</h2><p class="sub">結論不要只信分數，自己看看這幾則。資料只留在這台電腦。</p>'+Object.entries(ev).map(([k,v])=>'<details class="ev"><summary>'+esc(k)+'</summary>'+v.map(x=>'<div class="evl">'+esc(x)+'</div>').join('')+'</details>').join('');
+ h+='</div>';
  $('v-over').innerHTML=h;
  let g='<div class="hero plain"><div><h1>未來 8 週</h1><div class="meta">依目前資料推估的關係落點與建議</div></div></div><div class="body">';
  if(f){const sc=f.scenarios,ks=Object.keys(sc).sort((a,b)=>sc[b].point-sc[a].point);
   g+='<h2>關係落點排行</h2><p class="sub">相對可能性，由高到低；淡色範圍是 10–90% 區間。這是手設權重的啟發式分數，不是真實機率。</p><table><tr><th>#</th><th>落點</th><th></th><th>可能性</th></tr>'+ks.map((k,i)=>'<tr class="row'+(i===0?' top':'')+'"><td>'+(i+1)+'</td><td>'+esc(k)+(k===f.current_band_scenario?'<span class="cur">目前所在</span>':'')+'</td><td style="width:34%">'+bar(sc[k].point,sc[k].p10,sc[k].p90)+'</td><td class="pct">'+sc[k].point+'% <small>('+sc[k].p10+'–'+sc[k].p90+')</small></td></tr>').join('')+'</table>';
+  if(f.caveats&&f.caveats.length)g+='<div class="alert"><h3>證據強度：'+esc(f.evidence_strength)+'</h3>'+f.caveats.map(w=>'<div>'+esc(w)+'</div>').join('')+'</div>';
   g+='<p class="note">'+esc(f.scenario_note)+'</p><h2>訊息量走向</h2><div class="cards"><div class="card"><b>'+Math.round(f.fade_risk_4wk*100)+'%</b><span>未來 4 週明顯變少的風險</span></div><div class="card"><b>'+f.trend_slope_pct_per_week+'%</b><span>近期每週變化</span></div><div class="card"><b>'+f.recent_4wk_msgs_per_week+'</b><span>近 4 週平均每週則數</span></div></div>';
   if(f.rule_advice&&f.rule_advice.length)g+='<h2>目前建議</h2><ul class="adv">'+f.rule_advice.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul><p class="note">建議只依聊天行為，不代表對方的想法，也不替你做決定。</p>'}
  else g+='<div class="empty"><b>這份資料不做預測</b>'+esc((d.notes||[]).filter(n=>n.startsWith('未做')||n.includes('預測')).join('；')||'只適用於至少 8 週的二人聊天。')+'</div>';
  g+='</div>';$('v-fore').innerHTML=g;
  $('v-chart').innerHTML='<div class="hero plain"><div><h1>圖表</h1><div class="meta">點擊圖片放大</div></div></div><div class="body">'+(d.images.length?'<div class="imgs">'+d.images.map(i=>'<figure><img loading="lazy" src="/img/'+i+'?t='+T+'" alt="'+esc(i)+'"></figure>').join('')+'</div>':'<div class="empty"><b>沒有圖表</b>圖表產生失敗，請看總覽的警告。</div>')+'</div>';
- $('v-exp').innerHTML='<div class="hero plain"><div><h1>匯出</h1><div class="meta">把結果帶走，或貼給 Claude 寫成完整的敘事報告</div></div></div><div class="body"><div class="play"><button class="go" onclick="location.href=\'/download.zip?t='+T+'\'">下載全部結果</button></div><p class="note">壓縮檔內有 stats、score、forecast 三份 JSON、逐則明細 CSV 和所有圖表。CSV 不含聊天文字內容。</p><h2>限制</h2><p class="sub">只看文字；門檻是經驗設定，沒有用大樣本校準；機率是啟發式分數；電話與見面看不到；文字看不出性別與血緣，兄弟、姊妹、閨蜜統稱「摯友」，家人關係需本人確認。</p></div>';
+ $('v-exp').innerHTML='<div class="hero plain"><div><h1>匯出</h1><div class="meta">把結果帶走，或貼給 Claude 寫成完整的敘事報告</div></div></div><div class="body"><div class="play"><button class="go" onclick="location.href=\'/download.zip?t='+T+'\'">下載全部結果</button></div><p class="note">壓縮檔內有 stats、score、forecast 三份 JSON、逐則明細 CSV 和所有圖表。CSV 不含聊天文字內容；stats 與 score 內有少量證據原文，分享前請先檢查。</p><h2>限制</h2><p class="sub">只看文字；門檻是經驗設定，沒有用大樣本校準；機率是啟發式分數；電話與見面看不到；文字看不出性別與血緣，兄弟、姊妹、閨蜜統稱「摯友」，家人關係需本人確認。</p></div>';
  show('over')}
 document.addEventListener('click',e=>{const i=e.target.closest('.imgs img');if(i){$('lbimg').src=i.src;$('lb').classList.add('on')}else if(e.target.closest('#lb'))$('lb').classList.remove('on')});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('lb').classList.remove('on')});

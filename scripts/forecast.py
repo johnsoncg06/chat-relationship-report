@@ -75,6 +75,15 @@ out['current_band_scenario'] = cur_key
 out['stay_probability_pct'] = out['scenarios'][cur_key]['point'] if cur_key else None   # 「維持目前關係」= 落在目前區間的相對可能性
 out['scenario_note'] = '情境名稱是「未來 8 週最可能落在哪個區間」，目前所處區間已加慣性。手設權重的 softmax，未用真實關係結果校準；可能性之和為 100%，只代表「在這五種落點裡，目前資料偏向哪一邊」。文字看不出性別與血緣：兄弟／姊妹／閨蜜／哥們統稱摯友，家人關係需本人確認，不在預測範圍。'
 
+# 證據強度：越短、越由事件或規則帶動，區間越不可信；這裡只標示，不改數字
+caveats = []
+if S.get('closeness_inputs', {}).get('span_days', 0) < 56: caveats.append('資料不足 8 週，走勢與落點只供參考')
+if S.get('structured_chat', {}).get('flag'): caveats.append('疑似結構化對話（輪流發問等），互動量由規則帶動')
+if S.get('top2_days_share', 0) > 0.6: caveats.append('訊息集中在少數幾天，近期水位不代表日常')
+out['evidence_strength'] = '弱' if caveats else '一般'
+out['caveats'] = caveats
+out['scenario_note'] += ' 研究也顯示，用聊天內容預測關係走向的證據有限（例如以承諾程度為主的模型，分手預測的平衡準確率僅約六成），請把這裡當成討論材料，不是預測。'
+
 # ---- 3. 規則式現況建議（只依資料，不替使用者決定）----
 adv = []
 dim_sorted = sorted(D.items(), key=lambda kv: kv[1])

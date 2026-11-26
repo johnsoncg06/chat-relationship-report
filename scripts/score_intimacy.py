@@ -10,13 +10,15 @@ lat = list(d['reply_latency_min_median'].values()) or [120]
 rate = lambda k: st.mean(d['per_100_msgs'][p].get(k, 0) for p in d['per_100_msgs']) if 'per_100_msgs' in d else 0
 avg_len = st.mean(d['avg_len_chars'].values()) if d['avg_len_chars'] else 0
 sub = {
- '聯絡頻率': (25, lin(ci['active_day_ratio'], .1, .9)),
+ '聯絡頻率': (12, lin(ci['active_day_ratio'], .1, .9)),   # 研究顯示「怎麼傳」比「傳多少」更能預測關係滿意度，頻率只當輔助、權重已降低
  '互動密度': (15, lin(ci['msgs_per_active_day'], 5, 80)),
  '持續性':   (10, 100 - lin(ci['longest_silence_days'], 2, 30)),
  '晚安儀式': (10, lin(ci['goodnight_day_ratio'], 0, .5)),
  '深夜互動': (10, lin(ci['late_night_share'], 0, .08)),
  '話語長度': (15, lin(avg_len, 3, 25)),
 }
+RS = d.get('rhythm_similarity')
+if RS: sub['節奏相似'] = (13, RS['score'])   # 雙方長度、連發、活躍時段的相似度
 LAT_OK = d.get('reply_latency_reliable', True)
 if LAT_OK: sub['回覆速度'] = (15, 100 - lin(st.median(lat), 5, 120))
 wsum = sum(w for w, v in sub.values())
@@ -66,15 +68,18 @@ elif romantic >= 55 and closeness >= 55: band = '情侶／伴侶'
 elif romantic >= 25 and closeness >= 35: band = '曖昧～交往初期'
 elif closeness >= 50: band = '好友／兄弟姊妹／閨蜜（家人需本人確認）'
 else: band = '普通朋友／同學同事'
-if not d['is_group'] and (ci['span_days'] < 14 or d.get('top2_days_share', 0) > 0.6): band += '（僅供參考：資料太短或由事件爆量主導）'
+if not d['is_group'] and (ci['span_days'] < 14 or d.get('top2_days_share', 0) > 0.6 or d.get('structured_chat', {}).get('flag')): band += '（僅供參考：資料太短或由事件爆量主導）'
 asym = None
 if not d['is_group'] and 'per_100_msgs' in d:
     r = {p: d['per_100_msgs'][p].get('miss_you', 0) + d['per_100_msgs'][p].get('love_you', 0) + d['per_100_msgs'][p].get('pet_name', 0) for p in d['per_100_msgs']}
     hi, lo = max(r.values()), min(r.values()); asym = '單向偏重' if hi > 0 and lo < hi * .4 else '雙向'
+STRUCT = bool(d.get('structured_chat', {}).get('flag'))
 conf_pts = (d['total'] >= 500) + (ci['span_days'] >= 30) + (ci['active_days'] >= 15)
 conf = '高' if conf_pts == 3 and d['total'] >= 2000 else '中' if conf_pts >= 2 else '低'
-if ci['span_days'] < 14 or d.get('top2_days_share', 0) > 0.6: conf = '低'   # 太短或爆量主導，一律低信心
+if ci['span_days'] < 14 or d.get('top2_days_share', 0) > 0.6 or STRUCT: conf = '低'   # 太短或爆量主導，一律低信心
 print(json.dumps({'closeness': round(closeness), 'romantic_signal': round(romantic), 'band': band, 'trend': trend,
   'romantic_direction': asym, 'confidence': conf, 'dimensions': dims, 'warnings': d.get('warnings', []),
-  'changepoints': d.get('changepoints'), 'sub_closeness': {k: round(v) for k, (w, v) in sub.items()},
+  'changepoints': d.get('changepoints'),
+  'experimental': {'style_matching': d.get('style_matching'), 'we_talk': d.get('we_talk'), 'rhythm_similarity': RS, 'note': '實驗性：研究多為英語情侶；華語效度未驗證，不納入親密度，只供參考。'},
+  'structured_chat': d.get('structured_chat'), 'evidence': d.get('evidence'), 'sub_closeness': {k: round(v) for k, (w, v) in sub.items()},
   'sub_romantic': {k: round(v) for k, (w, v) in rom.items()}}, ensure_ascii=False, indent=1))
