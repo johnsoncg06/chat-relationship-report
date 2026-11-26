@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>暈船小狗偵測器</title>
+<title>CRR</title>
 <style>
 :root{--base:#121212;--side:#000;--panel:#181818;--raise:#242424;--hover:#2a2a2a;--line:#2e2e2e;--ink:#fff;--mute:#b3b3b3;--dim:#7a7a7a;--g:#1ed760;--g2:#1db954;--warn:#f5a623;--bad:#f15e6c}
 *{box-sizing:border-box}html,body{height:100%}
@@ -75,6 +75,17 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
 .c-cool{background:#3a1c20;color:#ffc4ca}.c-warm{background:#143222;color:#9ef0b8}.c-flat{background:#262626;color:#aaa}.c-na{background:#262626;color:#777}
 .tbl tr.row td:first-child{width:auto;color:inherit}.tbl td,.tbl th{text-align:left;padding:8px 10px;font-size:13.5px;vertical-align:top}
 
+
+.al{border-radius:18px;padding:14px 18px;margin:10px 0;border:1px solid var(--glass-line);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.al.fall{background:rgba(241,94,108,.12);border-left:4px solid var(--bad)}.al.up{background:rgba(30,215,96,.11);border-left:4px solid var(--g)}
+.al h3{margin:0 0 6px;font-size:15px}.al .tag{display:inline-block;font-size:12px;font-weight:800;border-radius:500px;padding:2px 10px;margin-right:8px;color:#000}.al.fall .tag{background:var(--bad)}.al.up .tag{background:var(--g)}
+.al ul{margin:6px 0 0;padding-left:18px;color:var(--mute);font-size:13.5px}.al details summary{cursor:pointer;color:#fff;font-weight:700;margin-top:8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 18px}.chips button{border-radius:500px;padding:7px 16px;background:rgba(255,255,255,.08);border:1px solid var(--glass-line);font-weight:700;color:var(--mute)}.chips button.on{background:var(--g);color:#000;border-color:transparent}
+.wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.wc{border-radius:24px;padding:22px 22px 20px;color:#fff;min-height:190px;position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.wc .k{font-size:13px;font-weight:800;opacity:.85}.wc .big{font-size:56px;font-weight:900;letter-spacing:-2px;line-height:1.05;margin:8px 0 6px}.wc .t{font-size:34px;font-weight:900;letter-spacing:-1px;line-height:1.15;margin:8px 0}.wc .s{font-size:13.5px;opacity:.9}
+.wc.w2{grid-column:1/-1}.g1{background:linear-gradient(135deg,#1ed760,#0d6b36)}.g2{background:linear-gradient(135deg,#a78bfa,#4b2fa6)}.g3{background:linear-gradient(135deg,#f573a0,#a21d52)}.g4{background:linear-gradient(135deg,#ffa42b,#b3510a)}.g5{background:linear-gradient(135deg,#509bf5,#1b4e9e)}.g6{background:linear-gradient(135deg,#ffd23f,#8a6a00);color:#1a1300}
+.wc .mb{height:8px;border-radius:8px;background:rgba(255,255,255,.28);margin:6px 0;overflow:hidden}.wc .mb i{display:block;height:100%;background:#fff;border-radius:8px}
 /* ===== Spotify × 毛玻璃：圓角與半透明模糊層（放最後覆蓋前面的樣式） ===== */
 :root{--glass:rgba(24,24,24,.58);--glass2:rgba(255,255,255,.06);--glass-line:rgba(255,255,255,.09);--blur:blur(22px) saturate(1.5)}
 body{background:#0b0b0b;position:relative}
@@ -113,10 +124,11 @@ svg[style*="background:#181818"]{background:rgba(255,255,255,.04)!important;bord
 </style></head>
 <body>
 <aside>
- <div class="brand"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#1ed760"/><path d="M6 8c-2.5 4-1 9 2 10l3-8zM26 8c2.5 4 1 9-2 10l-3-8z" fill="#0b3d20"/><ellipse cx="16" cy="17.5" rx="8.6" ry="8" fill="#eafff1"/><circle cx="12.4" cy="16" r="1.5" fill="#0b3d20"/><circle cx="19.6" cy="16" r="1.5" fill="#0b3d20"/><ellipse cx="16" cy="20" rx="2.4" ry="1.7" fill="#0b3d20"/><path d="M13.6 22.6q2.4 2 4.8 0" stroke="#0b3d20" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>暈船小狗偵測器</div>
+ <div class="brand"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="#1ed760"/><path d="M6 8c-2.5 4-1 9 2 10l3-8zM26 8c2.5 4 1 9-2 10l-3-8z" fill="#0b3d20"/><ellipse cx="16" cy="17.5" rx="8.6" ry="8" fill="#eafff1"/><circle cx="12.4" cy="16" r="1.5" fill="#0b3d20"/><circle cx="19.6" cy="16" r="1.5" fill="#0b3d20"/><ellipse cx="16" cy="20" rx="2.4" ry="1.7" fill="#0b3d20"/><path d="M13.6 22.6q2.4 2 4.8 0" stroke="#0b3d20" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>CRR</div>
  <nav id="nav">
   <button data-v="start" class="on"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg><span>開始分析</span></button>
   <button data-v="over" disabled><svg viewBox="0 0 24 24"><path d="M4 13h4v7H4zm6-9h4v16h-4zm6 5h4v11h-4z"/></svg><span>總覽</span></button>
+  <button data-v="recap" disabled><svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.1 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg><span>月度回顧</span></button>
   <button data-v="fore" disabled><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8v4h2V4h-7v2h4l-7 7-4-4-8 8z"/></svg><span>未來預測</span></button>
   <button data-v="chart" disabled><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg><span>圖表</span></button>
   <button data-v="proj"><svg viewBox="0 0 24 24"><path d="M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/></svg><span>多對象對比</span></button>
@@ -132,7 +144,7 @@ svg[style*="background:#181818"]{background:rgba(255,255,255,.04)!important;bord
  <section class="view on" id="v-start">
   <div class="hero plain"><div><h1>看懂你們的聊天</h1><div class="meta">匯入 LINE 或 Instagram 的聊天記錄，算出親密度、關係區間，以及未來 1 週（早期）或 8 週的走向。</div></div></div>
   <div class="body">
-   <h2>匯入聊天記錄</h2>
+   <div id="bn"></div><h2>匯入聊天記錄</h2>
    <div class="drop" id="drop"><b>拖曳檔案到這裡，或點擊選擇</b>LINE：.txt　Instagram：message_1.json 等（可多選，兩個平台可合併）<input id="file" type="file" multiple hidden></div>
    <div class="files" id="flist"></div>
    <h2>設定（可略過）</h2>
@@ -154,6 +166,7 @@ svg[style*="background:#181818"]{background:rgba(255,255,255,.04)!important;bord
   </div>
  </section>
  <section class="view" id="v-over"></section>
+ <section class="view" id="v-recap"></section>
  <section class="view" id="v-fore"></section>
  <section class="view" id="v-chart"></section>
  <section class="view" id="v-proj"></section>
@@ -195,11 +208,12 @@ function bandShown(s){const c=s.context;return(c&&/^not_met/.test(c.stage||'')&&
 function render(d){
  if(d.error){$('status').innerHTML='<span style="color:var(--bad)">'+esc(d.error)+'</span>';return}
  const s=d.score,st=d.stats,f=d.forecast;has=true;
- document.querySelectorAll('#nav button').forEach(b=>{b.disabled=false});if(!f)document.querySelector('[data-v=fore]').disabled=false;
+ document.querySelectorAll('#nav button').forEach(b=>{b.disabled=false});if(!f)document.querySelector('[data-v=fore]').disabled=false;renderRecap(d.monthly);
  const W=[].concat(s.warnings||[],d.notes||[]);
  const names=Object.entries(st.people).map(([k,v])=>'<b>'+esc(k)+'</b> '+v+' 則').join('　');
  let h='<div class="hero"><div class="cover"><b>'+s.closeness+'</b><span>親密度 / 100</span></div><div><h1>'+esc(bandShown(s))+'</h1><div class="meta">'+names+'<br>信心「'+esc(s.confidence)+'」・趨勢「'+esc(s.trend)+'」・'+esc(st.span[0].slice(0,10))+' 到 '+esc(st.span[1].slice(0,10))+'</div></div></div><div class="body">';
  if(s.context){h+='<div class="alert"><h3>對話情境：'+esc((s.context.labels||[]).join('、'))+'</h3>'+(s.context.notes||[]).map(w=>'<div>'+esc(w)+'</div>').join('')+((s.context.adjustments||[]).length?'<div><b>有調整的地方：</b>'+(s.context.adjustments||[]).map(esc).join('；')+'</div>':'<div>沒有調整任何分數，只影響解讀。</div>')+'<div style="opacity:.7">情境由你標註，沒有任何情境的權重經台灣資料校準。</div></div>'}
+ h+=alertsHtml(d.alerts);
  if(W.length)h+='<div class="alert"><h3>先看這幾點，分數可能受影響</h3>'+W.map(w=>'<div>'+esc(w)+'</div>').join('')+'</div>';
  h+='<h2>關鍵數字</h2><div class="cards"><div class="card"><b>'+s.closeness+'</b><span>親密度</span></div><div class="card"><b>'+s.romantic_signal+'</b><span>浪漫訊號</span></div><div class="card"><b>'+esc(s.romantic_direction||'—')+'</b><span>情感詞方向</span></div><div class="card"><b>'+st.total+'</b><span>訊息數</span></div><div class="card"><b>'+st.closeness_inputs.active_days+'</b><span>有聊天的天數</span></div></div>';
  if(s.dimensions)h+='<h2>五個維度</h2>'+Object.entries(s.dimensions).map(([k,v])=>'<div class="dim"><span>'+esc(k)+'</span>'+bar(v)+'<b>'+v+'</b></div>').join('');
@@ -275,10 +289,36 @@ function backtestHtml(b){let h='<h2>預測準不準？（回測）</h2><p class=
  if(!sc)h+='<p class="note">在上方表格的「實際狀態」欄標註你覺得當時真正的關係狀態。預測與標註相隔至少 6 週，這裡才會開始比對。</p>';
  else h+='<p class="sub">預測排名第一的落點，和你標註的實際狀態相符：'+sc.hit_rate_pct+'%（'+sc.n+' 組）。</p><table class="hist"><tr><th>間隔</th><th>預測第一名</th><th>你標註的實際狀態</th><th>預測給實際狀態的可能性</th></tr>'+sc.rows.map(r=>'<tr class="row"><td>'+r.days+' 天</td><td>'+esc(r.predicted_top)+'</td><td>'+esc(r.actual)+(r.hit?' ✔':'')+'</td><td>'+(r.prob_on_actual!=null?r.prob_on_actual+'%':'-')+'</td></tr>').join('')+'</table>';
  h+='<p class="note">這裡只量測、不自動調整權重：樣本太少時自動調整會過度貼合少數幾次紀錄，反而更不準。累積足夠多組之後，才有資格檢討預測用的權重。</p>';return h}
+
+function alertsHtml(a,nohead){const L=(a&&a.alerts)||[];if(!L.length)return '<div class="al up" style="border-left-color:#555;background:rgba(255,255,255,.05)"><h3>目前沒有偵測到明顯的突破或跌落訊號</h3><div class="sub" style="margin:0">這只代表規則沒觸發，不代表關係沒有變化。</div></div>';
+ return (nohead?'':'<h2>突破／跌落提醒</h2>')+L.map(x=>{const up=x.type==='breakthrough';return '<div class="al '+(up?'up':'fall')+'"><h3><span class="tag">'+(up?'可能突破':'可能跌落')+(x.level==='high'?'・較強':'')+'</span>'+esc(x.title)+'</h3><ul>'+(x.evidence||[]).map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul><details'+(x.level==='high'?' open':'')+'><summary>可以怎麼做</summary><ul>'+(x.advice||[]).map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul></details></div>'}).join('')+'<p class="note">'+esc((a&&a.note)||'')+'</p>'}
+let RC=null,RM=null;
+function renderRecap(m){RC=m;const el=$('v-recap');
+ let g='<div class="hero plain"><div><h1>月度回顧</h1><div class="meta">每個月的聊天，像年度回顧一樣整理成幾張卡</div></div></div><div class="body">';
+ if(!m||!m.months||!m.months.length){el.innerHTML=g+'<div class="empty"><b>沒有月度資料</b>這筆紀錄是舊版存的，或聊天太短。重新分析一次就會有。</div></div>';return}
+ const ms=m.months;if(!RM||!ms.find(x=>x.month===RM)){const ok=ms.filter(x=>!x.partial);RM=(ok.length?ok[ok.length-1]:ms[ms.length-1]).month}
+ g+='<div class="chips">'+ms.map(x=>'<button data-m="'+x.month+'" class="'+(x.month===RM?'on':'')+'">'+x.month+(x.partial?'*':'')+'</button>').join('')+'</div>';
+ const c=ms.find(x=>x.month===RM),P=m.people,tot=c.total||1,pc=p=>Math.round(100*(c.msgs[p]||0)/tot);
+ const mx=Math.max(...c.hours,1),hb='<svg viewBox="0 0 240 56" width="100%" style="margin-top:8px">'+c.hours.map((v,h)=>'<rect x="'+(h*10+1)+'" y="'+(52-48*v/mx)+'" width="8" height="'+(48*v/mx+1)+'" rx="3" fill="#fff" fill-opacity="'+(h===c.peak_hour?1:.45)+'"/>').join('')+'</svg>';
+ const bars=(o,unit)=>P.map(p=>'<div class="s" style="margin-top:8px">'+esc(p)+'　'+(o[p]??'—')+(unit||'')+'</div><div class="mb"><i style="width:'+Math.min(100,Math.round(100*(o[p]||0)/Math.max(1,...P.map(q=>o[q]||0))))+'%"></i></div>').join('');
+ const kw=c.keywords||{},kl=[['goodnight','晚安'],['miss_you','想你'],['heart','愛心'],['laugh','哈哈']].filter(([k])=>kw[k]&&Object.values(kw[k]).some(v=>v>0));
+ const it=c.initiations||{},itn=Object.values(it).reduce((a,b)=>a+b,0)||1,lat=c.median_reply_min||{};
+ g+='<div class="wrap"><div class="wc g1 w2"><div class="k">'+c.month+(c.partial?'（資料不完整）':'')+' 的稱號</div><div class="t" style="font-size:54px">'+esc(c.title)+'</div><div class="s">'+esc(c.title_why)+'</div></div>'+
+  '<div class="wc g2"><div class="k">訊息總量</div><div class="big">'+c.total+'</div><div class="s">'+(c.vs_prev_pct!=null?'比上個月 '+(c.vs_prev_pct>=0?'多 ':'少 ')+Math.abs(c.vs_prev_pct)+'%':'這是第一個月')+'</div>'+P.map(p=>'<div class="s" style="margin-top:8px">'+esc(p)+'　'+(c.msgs[p]||0)+' 則（'+pc(p)+'%）</div><div class="mb"><i style="width:'+pc(p)+'%"></i></div>').join('')+'</div>'+
+  '<div class="wc g3"><div class="k">有聊天的天數</div><div class="big">'+c.active_days+'<span style="font-size:24px"> / '+c.days_in_month+'</span></div><div class="s">連續聊天最長 '+c.streak+' 天<br>最熱的一天：'+c.busiest_day.date.slice(5)+'（'+c.busiest_day.n+' 則）</div></div>'+
+  '<div class="wc g4"><div class="k">最愛聊天的時段</div><div class="big">'+String(c.peak_hour).padStart(2,'0')+':00</div><div class="s">星期'+esc(c.peak_weekday)+'最熱鬧'+(c.late_night_share>0?'・凌晨 0–5 點占 '+Math.round(100*c.late_night_share)+'%':'')+'</div>'+hb+'</div>'+
+  '<div class="wc g5"><div class="k">誰先開話題</div>'+P.map(p=>'<div class="s" style="margin-top:10px">'+esc(p)+'　'+(it[p]||0)+' 次（'+Math.round(100*(it[p]||0)/itn)+'%）</div><div class="mb"><i style="width:'+Math.round(100*(it[p]||0)/itn)+'%"></i></div>').join('')+'<div class="s" style="margin-top:10px">共 '+c.sessions+' 段對話；以靜默 6 小時為新話題</div></div>'+
+  (Object.keys(lat).length?'<div class="wc g6"><div class="k">回覆速度（中位數）</div>'+bars(lat,' 分')+'<div class="s" style="margin-top:10px">越短越快</div></div>':'')+
+  (kl.length?'<div class="wc g1"><div class="k">情感詞</div>'+kl.map(([k,l])=>'<div class="s" style="margin-top:10px"><b>'+l+'</b>　'+P.map(p=>esc(p)+' '+(kw[k][p]||0)).join('　')+'</div>').join('')+'</div>':'')+'</div>'+
+  '<h2>每月訊息量</h2><div class="cards" style="grid-template-columns:repeat(auto-fit,minmax(70px,1fr))">'+ms.map(x=>'<div class="card" style="padding:10px;text-align:center;cursor:pointer;'+(x.month===RM?'outline:2px solid var(--g)':'')+'" data-m="'+x.month+'"><b style="font-size:20px">'+x.total+'</b><span>'+x.month.slice(2)+(x.partial?'*':'')+'</span></div>').join('')+'</div><p class="note">'+esc(m.note||'')+'　* 表示該月資料不完整。稱號是依數字套規則得出的趣味標籤。</p></div>';
+ el.innerHTML=g;el.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{RM=b.dataset.m;renderRecap(RC)})}
+async function homeAlerts(){const r=PJ;const el=$('bn');if(!el)return;const L=[];(r&&r.projects||[]).forEach(p=>(p.alerts||[]).forEach(a=>L.push({n:p.name,a})));
+ el.innerHTML=L.length?'<div class="al '+(L.some(x=>x.a.type==='fall')?'fall':'up')+'" style="max-width:720px"><h3>有 '+L.length+' 則關係提醒</h3><ul>'+L.slice(0,5).map(x=>'<li><b>'+esc(x.n)+'</b>：'+(x.a.type==='breakthrough'?'可能突破 — ':'可能跌落 — ')+esc(x.a.title)+'</li>').join('')+'</ul><div class="s" style="margin-top:6px"><button class="mini" id="gop">到「多對象對比」看建議</button></div></div>':'';
+ if($('gop'))$('gop').onclick=()=>{show('proj');loadProj()}}
 const PC=['#1ed760','#f573a0','#509bf5','#ffa42b','#a78bfa','#ffd23f','#ff5d5d','#b3b3b3'];let PJ=null,PSEL=null;
 async function fillProj(){const r=await J('/api/projects');PJ=r;const el=$('proj'),cur=el.value;
  el.innerHTML='<option value="">自動（同一組名字會歸到原本的對象）</option>'+(r.projects||[]).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'<option value="__new">＋ 新增對象…</option>';
- el.value=[...el.options].some(o=>o.value===cur)?cur:''}
+ el.value=[...el.options].some(o=>o.value===cur)?cur:'';homeAlerts()}
 $('proj').onchange=async e=>{if(e.target.value!=='__new')return;e.target.value='';
  if(!HIST||!HIST.folder){alert('要先在下方選好儲存位置，才能建立對象。');return}
  const n=prompt('對象名稱（例如：小美、A 同學）');if(!n)return;const r=await J('/api/project_create',{name:n});if(r.error){alert(r.error);return}await fillProj();e.target.value=r.id};
@@ -315,6 +355,7 @@ async function loadProj(){const el=$('v-proj');await fillProj();const r=PJ;
    if(d.future&&d.future.length){const f=d.future.map(q=>[D(q.date),q.p50]);ws.push({c:x.c,dash:true,pts:[pts[pts.length-1]].concat(f),band:d.future.map(q=>[D(q.date),q.p90]).concat(d.future.map(q=>[D(q.date),q.p10]).reverse())})}});
   if(ws.length){const ax=ws.flatMap(s=>s.pts.map(p=>p[0])),ay=ws.flatMap(s=>s.pts.map(p=>p[1]).concat((s.band||[]).map(p=>p[1])));
    g+='<h2>每週訊息量與預測</h2><p class="sub">實線＝實際，虛線＝預測中位數，淡色帶＝80% 區間。早期模式的對象沒有每週預測，只畫實際。</p>'+legendHtml(sel)+lineChart(900,280,ws,{xmin:Math.min(...ax),xmax:Math.max(...ax),ymin:0,ymax:Math.max(...ay)*1.1||1,xf:dfmt,yf:v=>Math.round(v)})}}
+ const al=r.projects.filter(p=>(p.alerts||[]).length);if(al.length)g+='<h2>提醒與建議</h2>'+al.map(p=>'<h3 style="margin:14px 0 4px">'+esc(p.name)+'</h3>'+alertsHtml({alerts:p.alerts,note:''},1)).join('')+'<p class="note">提醒是規則式啟發式，沒用台灣資料驗證；它指出值得看一下的變化，不是預言。</p>';
  if(r.unassigned.length){g+='<h2>未分組的紀錄</h2><p class="sub">舊紀錄或沒指定對象的紀錄。指定後就會出現在對象裡。</p><table class="hist"><tr><th>時間</th><th>參與者</th><th>親密度</th><th>歸到</th></tr>'+r.unassigned.map(u=>'<tr class="row"><td>'+fdate(u.saved_at)+'</td><td>'+esc(u.people.join(' × '))+'</td><td>'+u.closeness+'</td><td><select class="asg" data-id="'+u.id+'"><option value="">不分組</option>'+r.projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></td></tr>').join('')+'</table>'}
  el.innerHTML=g+'</div>';
  $('addp').onclick=async()=>{const x=await J('/api/project_create',{name:$('newp').value});if(x.error){$('pmsg').textContent=x.error;return}loadProj()};

@@ -89,12 +89,16 @@ def save_run(out_dir, result, label='', project=None):
     json.dump(sc, open(os.path.join(dst, 'score.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     fc = result.get('forecast')
     if fc: json.dump(fc, open(os.path.join(dst, 'forecast.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    for fn in ('monthly.json', 'alerts.json'):
+        if os.path.isfile(os.path.join(out_dir, fn)): shutil.copy(os.path.join(out_dir, fn), os.path.join(dst, fn))
+    try: al = [{k: x[k] for k in ('type', 'level', 'title')} for x in json.load(open(os.path.join(dst, 'alerts.json'), encoding='utf-8'))['alerts']]
+    except Exception: al = []
     cdir = os.path.join(out_dir, 'charts')
     if os.path.isdir(cdir): shutil.copytree(cdir, os.path.join(dst, 'charts'), dirs_exist_ok=True)
     csvp = os.path.join(out_dir, 'messages.csv')
     meta = {'id': rid, 'saved_at': now.isoformat(timespec='seconds'), 'label': label, 'actual_status': None, 'people': list(st['people']), 'key': pair_key(st['people']),
             'is_group': bool(st.get('is_group')), 'span': st.get('span'), 'total': st.get('total'), 'closeness': sc['closeness'], 'romantic': sc['romantic_signal'],
-            'band': sc['band'], 'profile': sc.get('profile', 'base'), 'context': {k: (sc.get('context') or {}).get(k) for k in ('met', 'stage', 'breakup')}, 'trend': sc['trend'], 'confidence': sc['confidence'], 'has_forecast': bool(fc),
+            'band': sc['band'], 'profile': sc.get('profile', 'base'), 'context': {k: (sc.get('context') or {}).get(k) for k in ('met', 'stage', 'breakup')}, 'trend': sc['trend'], 'confidence': sc['confidence'], 'has_forecast': bool(fc), 'alerts': al,
             'project': _resolve_project(project, pair_key(st['people'])),
             'weekly': _weekly(csvp) if os.path.isfile(csvp) else {}}
     json.dump(meta, open(os.path.join(dst, 'meta.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
@@ -200,6 +204,14 @@ def projects_overview():
         item = {'id': p['id'], 'name': p['name'], 'n': len(rs), 'runs': rs}
         if rs:
             last = rs[-1]; item['latest'] = dict(last, **{'digest': _digest(last['id'])})
+            m, d = _meta(last['id']); al = []
+            try: al = json.load(open(os.path.join(d, 'alerts.json'), encoding='utf-8')).get('alerts', [])
+            except Exception: pass
+            if len(rs) >= 2:   # 兩次分析之間親密度明顯變動
+                dlt = last['closeness'] - rs[-2]['closeness']
+                if dlt <= -6: al = al + [{'type': 'fall', 'level': 'watch', 'title': f'親密度比上一次分析下降 {-dlt} 分', 'evidence': [f"{rs[-2]['closeness']} → {last['closeness']}（信心：{last.get('confidence')}）"], 'advice': ['先看是不是資料量或單日爆量造成；若信心為低，差異可能只是雜訊。']}]
+                if dlt >= 6: al = al + [{'type': 'breakthrough', 'level': 'watch', 'title': f'親密度比上一次分析上升 {dlt} 分', 'evidence': [f"{rs[-2]['closeness']} → {last['closeness']}（信心：{last.get('confidence')}）"], 'advice': ['趁勢提出具體的下一步，同時確認對方也同步升溫。']}]
+            item['alerts'] = al
         out.append(item)
     return {'projects': out, 'unassigned': [r for r in runs if r.get('project') not in ids]}
 
@@ -308,7 +320,7 @@ def load_run(rid):
     if not m: return None
     ld = lambda n: json.load(open(os.path.join(d, n), encoding='utf-8')) if os.path.isfile(os.path.join(d, n)) else None
     imgs = sorted(os.path.basename(f) for f in glob.glob(os.path.join(d, 'charts', '*.svg')))
-    return {'stats': ld('stats.json'), 'score': ld('score.json'), 'forecast': ld('forecast.json'), 'images': imgs, 'notes': ['這是已儲存的歷史紀錄（不含聊天原文與證據片段）。'], 'run_id': rid, 'meta': {k: v for k, v in m.items() if k != 'weekly'}}
+    return {'stats': ld('stats.json'), 'score': ld('score.json'), 'forecast': ld('forecast.json'), 'monthly': ld('monthly.json'), 'alerts': ld('alerts.json'), 'images': imgs, 'notes': ['這是已儲存的歷史紀錄（不含聊天原文與證據片段）。'], 'run_id': rid, 'meta': {k: v for k, v in m.items() if k != 'weekly'}}
 
 
 def run_image(rid, name):

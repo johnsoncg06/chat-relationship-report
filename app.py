@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""暈船小狗偵測器 — 桌面 App（本機執行，資料不離開你的電腦）。
+"""CRR — 桌面 App（本機執行，資料不離開你的電腦）。
 啟動後會在本機開一個只有你能連的網頁介面（127.0.0.1），上傳 LINE .txt / IG .json 即可產出分數、圖表、預測。
 只用 Python 標準函式庫（圖表輸出 SVG，由瀏覽器渲染）。"""
 import os, sys, io, json, glob, shutil, tempfile, secrets, threading, webbrowser, runpy, zipfile, contextlib, traceback
@@ -88,7 +88,17 @@ def pipeline(p):
                 _, err = run_script('chat_dashboard.py', [csv_p, st_p, sc_p, fp, chart_dir])
                 if err: notes.append('總覽圖失敗：' + err.strip().splitlines()[-1])
     imgs = sorted(os.path.basename(f) for f in glob.glob(os.path.join(chart_dir, '*.svg')))
-    return {'stats': stats, 'score': score, 'forecast': fc, 'images': imgs, 'notes': notes}
+    monthly = alerts = None
+    mp, ap = os.path.join(out, 'monthly.json'), os.path.join(out, 'alerts.json')
+    _, err = run_script('monthly_recap.py', [csv_p, mp])
+    if err: notes.append('月度回顧失敗：' + err.strip().splitlines()[-1])
+    else: monthly = load_json(open(mp, encoding='utf-8').read())
+    if not stats.get('is_group'):
+        fpath = os.path.join(out, 'forecast.json')
+        _, err = run_script('alerts.py', [csv_p, st_p, sc_p] + ([fpath] if fc else []) + ([mp] if monthly else []) + [ap])
+        if err: notes.append('提醒產生失敗：' + err.strip().splitlines()[-1])
+        elif os.path.isfile(ap): alerts = load_json(open(ap, encoding='utf-8').read())
+    return {'stats': stats, 'score': score, 'forecast': fc, 'images': imgs, 'notes': notes, 'monthly': monthly, 'alerts': alerts}
 
 
 def page():
@@ -254,7 +264,7 @@ def main():
     if sys.stdout is None: sys.stdout = open(os.devnull, 'w')   # 無主控台環境避免 print 當掉
     srv = ThreadingHTTPServer(('127.0.0.1', int(os.environ.get('PORT', 0))), H)
     url = f'http://127.0.0.1:{srv.server_address[1]}/?t={TOKEN}'
-    print('暈船小狗偵測器已啟動：', url, '\n（關閉此視窗即結束；資料只存在本機暫存資料夾）', flush=True)
+    print('CRR已啟動：', url, '\n（關閉此視窗即結束；資料只存在本機暫存資料夾）', flush=True)
     if not os.environ.get('NO_BROWSER'): threading.Timer(0.6, lambda: open_window(url)).start()
     threading.Thread(target=watchdog, daemon=True).start()
     try: srv.serve_forever()
