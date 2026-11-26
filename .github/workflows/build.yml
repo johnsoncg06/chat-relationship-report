@@ -14,6 +14,7 @@ env:
     --noconfirm --windowed --name ChatRelationshipReport --icon assets/icon.png
     --hidden-import pandas --hidden-import numpy --hidden-import scipy.stats
     --hidden-import matplotlib.backends.backend_agg --collect-data matplotlib
+    --exclude-module tkinter --exclude-module _tkinter --exclude-module matplotlib.backends.backend_tkagg --exclude-module matplotlib.backends.backend_qt5agg --exclude-module matplotlib.backends.backend_qtagg --exclude-module matplotlib.backends.backend_webagg --exclude-module matplotlib.backends.backend_wxagg --exclude-module matplotlib.backends.backend_gtk3agg --exclude-module matplotlib.backends.backend_macosx --exclude-module PyQt5 --exclude-module PyQt6 --exclude-module PySide2 --exclude-module PySide6 --exclude-module wx --exclude-module IPython --exclude-module jupyter --exclude-module notebook --exclude-module pytest --exclude-module sphinx --exclude-module numpy.tests --exclude-module pandas.tests --exclude-module scipy.tests --exclude-module matplotlib.tests
 jobs:
   version:
     runs-on: ubuntu-latest
