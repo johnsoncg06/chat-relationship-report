@@ -48,7 +48,15 @@ jobs:
         shell: bash
         run: |
           CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe > app.log 2>&1 &
-          python tests/smoke.py 8799 smoke || { echo '--- app.log ---'; cat app.log; exit 1; }
+          RC=0
+          timeout 240 python tests/smoke.py 8799 smoke > smoke.log 2>&1 || RC=$?
+          taskkill //F //IM ChatRelationshipReport.exe > /dev/null 2>&1 || true
+          cat smoke.log
+          if [ "$RC" -ne 0 ]; then
+            MSG=$( { echo "smoke rc=$RC"; cat smoke.log; echo "--- app.log ---"; tail -n 40 app.log; } | head -c 3000 | tr -d '\r' | sed -e ':a' -e 'N' -e '$!ba' -e 's/%/%25/g' -e 's/\n/%0A/g' )
+            echo "::error title=Windows smoke failed::$MSG"
+            exit 1
+          fi
       - name: Inno Setup installer
         shell: bash
         run: |
