@@ -94,7 +94,7 @@ def save_run(out_dir, result, label=''):
     csvp = os.path.join(out_dir, 'messages.csv')
     meta = {'id': rid, 'saved_at': now.isoformat(timespec='seconds'), 'label': label, 'actual_status': None, 'people': list(st['people']), 'key': pair_key(st['people']),
             'is_group': bool(st.get('is_group')), 'span': st.get('span'), 'total': st.get('total'), 'closeness': sc['closeness'], 'romantic': sc['romantic_signal'],
-            'band': sc['band'], 'profile': sc.get('profile', 'base'), 'trend': sc['trend'], 'confidence': sc['confidence'], 'has_forecast': bool(fc),
+            'band': sc['band'], 'profile': sc.get('profile', 'base'), 'context': {k: (sc.get('context') or {}).get(k) for k in ('met', 'stage', 'breakup')}, 'trend': sc['trend'], 'confidence': sc['confidence'], 'has_forecast': bool(fc),
             'weekly': _weekly(csvp) if os.path.isfile(csvp) else {}}
     json.dump(meta, open(os.path.join(dst, 'meta.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     return rid
@@ -191,6 +191,9 @@ def compare(a_id, b_id):
         # 舊紀錄（沒有 profile 欄位）是用 base 權重算的；兩次權重不同時，分數差有一部分是算法造成的
         ca, cb = (sa.get('closeness_by_profile') or {}), (sb.get('closeness_by_profile') or {})
         notes.append(f"注意：兩次使用不同的權重設定（{sa.get('profile', 'base')} → {sb.get('profile', 'base')}），親密度差異可能含算法差異；同一權重下的比較請看 closeness_by_profile。")
+    ca_, cb_ = (ma.get('context') or {}), (mb.get('context') or {})
+    if ca_ != cb_ and (any(ca_.values()) or any(cb_.values())):
+        notes.append('兩次紀錄標註的對話情境不同（例如見面進度或感情狀態），差異可能來自情境變化，不一定是關係本身。')
     ds = abs((sb['closeness'] - sa['closeness']))
     if ds < 5 and ma['key'] == mb['key']: notes.append('親密度變化在 5 分以內，約在分數本身的不確定範圍內，不要過度解讀。')
     return {'a': ma, 'b': mb, 'rows': rows, 'notes': notes}

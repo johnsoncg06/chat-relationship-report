@@ -4,6 +4,10 @@ import json, sys, os, statistics as st
 d = json.load(open(sys.argv[1], encoding='utf-8'))
 if 'error' in d: print(json.dumps(d, ensure_ascii=False)); sys.exit()
 ci = d['closeness_inputs']
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _context as CX
+_arg = lambda n: next((sys.argv[i + 1] for i, a in enumerate(sys.argv) if a == n and i + 1 < len(sys.argv)), None)
+CTX = CX.normalize(_arg('--met'), _arg('--stage'), _arg('--breakup'))
 def lin(x, lo, hi):  # 線性映射到 0-100（錨點為經驗設定，非常模樣本）
     return max(0.0, min(100.0, 100 * (x - lo) / (hi - lo)))
 lat = list(d['reply_latency_min_median'].values()) or [120]
@@ -42,14 +46,15 @@ closeness, used_w = closeness_of(PROFILE)
 sub = {k: (w, raw[k]) for k, w in used_w.items()}
 romantic_rate = rate('miss_you') + rate('love_you') + rate('pet_name') + .5 * rate('heart')
 ini = list(d['initiations'].values()); share = max(ini) / sum(ini) if ini else .5
+_rw = CX.romantic_weights({'情感詞密度': 50, '晚安儀式': 15, '深夜互動': 15, '主動對稱': 10, '單人對話': 10}, CTX)
 rom = {
- '情感詞密度': (50, lin(romantic_rate, 0, 8)),
- '晚安儀式':   (15, lin(ci['goodnight_day_ratio'], 0, .5)),
- '深夜互動':   (15, lin(ci['late_night_share'], 0, .08)),
- '主動對稱':   (10, 100 * (1 - abs(share - .5) * 2)),
- '單人對話':   (10, 0 if d['is_group'] else 100),
+ '情感詞密度': (_rw['情感詞密度'], lin(romantic_rate, 0, 8)),
+ '晚安儀式':   (_rw['晚安儀式'], lin(ci['goodnight_day_ratio'], 0, .5)),
+ '深夜互動':   (_rw['深夜互動'], lin(ci['late_night_share'], 0, .08)),
+ '主動對稱':   (_rw['主動對稱'], 100 * (1 - abs(share - .5) * 2)),
+ '單人對話':   (_rw['單人對話'], 0 if d['is_group'] else 100),
 }
-romantic = sum(w * v for w, v in rom.values()) / 100
+romantic = sum(w * v for w, v in rom.values()) / sum(w for w, v in rom.values())   # 未改權重時分母就是 100
 
 # ---- 五維度（0-100）：互惠、回應、投入、溫度、穩定 ----
 def balance(dct):
@@ -94,10 +99,13 @@ STRUCT = bool(d.get('structured_chat', {}).get('flag'))
 conf_pts = (d['total'] >= 500) + (ci['span_days'] >= 30) + (ci['active_days'] >= 15)
 conf = '高' if conf_pts == 3 and d['total'] >= 2000 else '中' if conf_pts >= 2 else '低'
 if ci['span_days'] < 14 or d.get('top2_days_share', 0) > 0.6 or STRUCT: conf = '低'   # 太短或爆量主導，一律低信心
+CTXO = CX.describe(CTX, d['is_group'])
+if CTXO: conf = CX.lower_confidence(conf, CTX)
 print(json.dumps({'closeness': round(closeness), 'romantic_signal': round(romantic), 'band': band, 'trend': trend,
   'romantic_direction': asym, 'confidence': conf, 'dimensions': dims, 'warnings': d.get('warnings', []),
   'changepoints': d.get('changepoints'),
-  'experimental': {'style_matching': d.get('style_matching'), 'we_talk': d.get('we_talk'), 'rhythm_similarity': RS, 'note': '實驗性：研究多為英語情侶；華語效度未驗證，不納入親密度，只供參考。'},
+  'experimental': {'style_matching': d.get('style_matching'), 'we_talk': d.get('we_talk'), 'rhythm_similarity': RS, 'note': '實驗性：研究多為英語情侶；華語效度未驗證，不納入親密度，只供參考。' + ('此情境（有人剛失戀）下語言類指標不可靠，請勿解讀。' if CTXO and CTXO.get('breakup') else '')},
+  'context': CTXO,
   'structured_chat': d.get('structured_chat'), 'evidence': d.get('evidence'), 'sub_closeness': {k: round(v) for k, (w, v) in sub.items()},
   'profile': PROFILE, 'weights': used_w, 'evidence_levels': {k: TIER.get(k, '未驗證') for k in used_w},
   'closeness_by_profile': {n: round(closeness_of(n)[0]) for n in PROFILES},

@@ -21,7 +21,7 @@ for _ in range(40):   # 連線稍慢時多試幾次
     try: call('/ping'); break
     except Exception: time.sleep(1)
 call('/reset', b''); call('/upload?name=smoke.txt', '\n'.join(L).encode('utf-8'))
-d = json.loads(call('/run', json.dumps({'tz': '8'}).encode()))
+d = json.loads(call('/run', json.dumps({'tz': '8', 'ctx': {'met': 'online_blind_date', 'stage': 'not_met_sns', 'breakup': 'one'}}).encode()))
 assert not d.get('error'), d
 assert d['stats']['total'] > 1000, d['stats']['total']
 assert 0 <= d['score']['closeness'] <= 100
@@ -31,6 +31,8 @@ assert set(sc['closeness_by_profile']) == {'base', 'tw'} and '表達量' in sc['
 assert all(v in ('未驗證', '東亞參考', '西方參考（實驗性）', '台灣驗證') for v in sc['evidence_levels'].values())
 assert any(k.get('sticker') for k in d['stats']['kinds'].values()), 'sticker kind not counted'
 assert 'calls' in d['stats']
+cx = sc.get('context'); assert cx and cx['met'] == 'online_blind_date' and len(cx['notes']) == 3 and cx['adjustments'], cx
+assert d['forecast'].get('caveats') and any('剛失戀' in c for c in d['forecast']['caveats']), d['forecast'].get('caveats')
 assert d.get('forecast') and d['forecast'].get('scenarios'), 'forecast missing: ' + str(d.get('notes'))
 assert len(d['images']) >= 5, d['images']
 # --- 歷史紀錄：選資料夾 → 再分析一次（自動存檔）→ 列表 / 載入 / 比對 / 回測 / 刪除 ---

@@ -71,6 +71,7 @@ ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);bord
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:760px){body{flex-direction:column-reverse}aside{width:auto;flex-direction:row;margin:0 8px 8px;padding:6px;border-radius:10px;overflow-x:auto}.brand,.priv,.sp,.quit span{display:none}nav{flex-direction:row}nav button span{display:none}.hero{flex-direction:column;align-items:flex-start;padding:28px 20px 20px}.body{padding:16px 20px 40px}}
 .hist td,.hist th{padding:8px 10px;font-size:13px;white-space:nowrap}.hist tr.row td:first-child{width:auto;color:inherit}.hist td:nth-child(6){white-space:normal}.hist select,.hist input.lb2{background:var(--raise);color:#fff;border:1px solid #333;border-radius:6px;padding:4px 6px;font:inherit;width:auto}.mini{background:var(--raise);border:1px solid #333;border-radius:500px;padding:5px 14px;font-size:12.5px;font-weight:700}.mini:hover{border-color:#fff}.mini.del:hover{border-color:var(--bad);color:var(--bad)}.up{color:var(--g)}.dn{color:var(--bad)}.grp{background:var(--raise);border-radius:10px;padding:16px 18px;margin:14px 0}details.ev{border:1px solid var(--line,#2a2a2a);border-radius:8px;padding:8px 12px;margin:6px 0}details.ev summary{cursor:pointer}.evl{font-size:13px;color:var(--sub,#b3b3b3);padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}.evchip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line,#ccc)}.ev-ea{background:#e6f0ff}.ev-w{background:#f3ecff}.ev-u{background:#f2f2f2;color:#666}.ev-tw{background:#e3f6e8}
+select{width:100%;background:var(--raise);border:1px solid transparent;border-radius:6px;padding:11px 12px;color:#fff;font:inherit}select:hover{border-color:#444}select:focus{outline:none;border-color:var(--g)}p.sub b{font-size:inherit;color:#fff}
 </style></head>
 <body>
 <aside>
@@ -102,6 +103,7 @@ ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);bord
     <div><label for="since">只分析從</label><input type="date" id="since"></div>
     <div><label for="until">到（不含當天）</label><input type="date" id="until"></div>
     <div><label for="tz">時區（台灣是 8）</label><input id="tz" value="8"></div>
+    <div><label for="c_met">怎麼認識的（選填）</label><select id="c_met"><option value="">不指定</option><option value="online_blind_date">線上盲約／配對活動</option><option value="street">搭訕</option><option value="matchmaking">相親</option><option value="family">家人介紹</option><option value="friend">朋友介紹</option><option value="was_friend">原本就是朋友</option><option value="new">剛認識（同學、活動等自然認識）</option></select></div><div><label for="c_stage">見面進度（選填）</label><select id="c_stage"><option value="">不指定</option><option value="not_met_no_sns">還沒見面，也沒交換其他社群帳號</option><option value="not_met_sns">還沒見面，但已交換社群帳號</option><option value="met">已經見面</option></select></div><div><label for="c_br">感情狀態（選填）</label><select id="c_br"><option value="">不指定</option><option value="one">有一方剛失戀</option><option value="both">兩方都剛失戀</option></select></div>
     <div><label for="label">這次的備註（選填）</label><input id="label" placeholder="例如：期中考前"></div>
    </div>
    <h2>儲存位置</h2>
@@ -134,17 +136,19 @@ async function send(fs){await api('/reset',{method:'POST'});uploaded=[];$('flist
  for(const f of fs){const r=await api('/upload?name='+encodeURIComponent(f.name),{method:'POST',body:await f.arrayBuffer()});if(r.ok)uploaded.push(f.name)}
  $('flist').innerHTML=uploaded.map(n=>'<span class="chip">'+esc(n)+'</span>').join('');$('go').disabled=!uploaded.length}
 $('go').onclick=async()=>{$('go').disabled=true;$('status').innerHTML='<span class="spin"></span>分析中，大型聊天可能要一分鐘';
- const body={};['me','exclude','alias','since','until','tz','label'].forEach(k=>body[k]=$(k).value.trim());
+ const body={};['me','exclude','alias','since','until','tz','label'].forEach(k=>body[k]=$(k).value.trim());body.ctx={met:$('c_met').value,stage:$('c_stage').value,breakup:$('c_br').value};
  let d;try{const r=await api('/run',{method:'POST',body:JSON.stringify(body)});d=await r.json()}catch(e){d={error:'連不到程式，請重新開啟 App。'}}
  $('go').disabled=false;$('status').textContent='';render(d);if(d.saved_run){$('status').textContent='已存入歷史紀錄';loadStore()}};
 function bar(v,lo,hi){return '<div class="track"><i style="width:'+v+'%"></i>'+(lo!=null?'<em style="left:'+lo+'%;width:'+Math.max(1,hi-lo)+'%"></em>':'')+'</div>'}
+function bandShown(s){const c=s.context;return(c&&/^not_met/.test(c.stage||'')&&s.band.indexOf('情侶／伴侶')===0)?s.band.replace('情侶／伴侶','互動熱絡・尚未見面（不等於交往）'):s.band}
 function render(d){
  if(d.error){$('status').innerHTML='<span style="color:var(--bad)">'+esc(d.error)+'</span>';return}
  const s=d.score,st=d.stats,f=d.forecast;has=true;
  document.querySelectorAll('#nav button').forEach(b=>{b.disabled=false});if(!f)document.querySelector('[data-v=fore]').disabled=false;
  const W=[].concat(s.warnings||[],d.notes||[]);
  const names=Object.entries(st.people).map(([k,v])=>'<b>'+esc(k)+'</b> '+v+' 則').join('　');
- let h='<div class="hero"><div class="cover"><b>'+s.closeness+'</b><span>親密度 / 100</span></div><div><h1>'+esc(s.band)+'</h1><div class="meta">'+names+'<br>信心「'+esc(s.confidence)+'」・趨勢「'+esc(s.trend)+'」・'+esc(st.span[0].slice(0,10))+' 到 '+esc(st.span[1].slice(0,10))+'</div></div></div><div class="body">';
+ let h='<div class="hero"><div class="cover"><b>'+s.closeness+'</b><span>親密度 / 100</span></div><div><h1>'+esc(bandShown(s))+'</h1><div class="meta">'+names+'<br>信心「'+esc(s.confidence)+'」・趨勢「'+esc(s.trend)+'」・'+esc(st.span[0].slice(0,10))+' 到 '+esc(st.span[1].slice(0,10))+'</div></div></div><div class="body">';
+ if(s.context){h+='<div class="alert"><h3>對話情境：'+esc((s.context.labels||[]).join('、'))+'</h3>'+(s.context.notes||[]).map(w=>'<div>'+esc(w)+'</div>').join('')+((s.context.adjustments||[]).length?'<div><b>有調整的地方：</b>'+(s.context.adjustments||[]).map(esc).join('；')+'</div>':'<div>沒有調整任何分數，只影響解讀。</div>')+'<div style="opacity:.7">情境由你標註，沒有任何情境的權重經台灣資料校準。</div></div>'}
  if(W.length)h+='<div class="alert"><h3>先看這幾點，分數可能受影響</h3>'+W.map(w=>'<div>'+esc(w)+'</div>').join('')+'</div>';
  h+='<h2>關鍵數字</h2><div class="cards"><div class="card"><b>'+s.closeness+'</b><span>親密度</span></div><div class="card"><b>'+s.romantic_signal+'</b><span>浪漫訊號</span></div><div class="card"><b>'+esc(s.romantic_direction||'—')+'</b><span>情感詞方向</span></div><div class="card"><b>'+st.total+'</b><span>訊息數</span></div><div class="card"><b>'+st.closeness_inputs.active_days+'</b><span>有聊天的天數</span></div></div>';
  if(s.dimensions)h+='<h2>五個維度</h2>'+Object.entries(s.dimensions).map(([k,v])=>'<div class="dim"><span>'+esc(k)+'</span>'+bar(v)+'<b>'+v+'</b></div>').join('');

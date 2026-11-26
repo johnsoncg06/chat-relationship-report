@@ -62,7 +62,11 @@ def pipeline(p):
     if err or stats is None: return {'error': '統計失敗：' + (err or txt[:300] or '沒有輸出')}
     if 'error' in stats: return {'error': '無法分析：' + json.dumps(stats, ensure_ascii=False)}
     open(os.path.join(out, 'stats.json'), 'w', encoding='utf-8').write(txt)
-    txt, err = run_script('score_intimacy.py', [os.path.join(out, 'stats.json')])
+    ctx = p.get('ctx') or {}
+    sargv = [os.path.join(out, 'stats.json')]
+    for k, flag in (('met', '--met'), ('stage', '--stage'), ('breakup', '--breakup')):
+        if ctx.get(k): sargv += [flag, str(ctx[k])]
+    txt, err = run_script('score_intimacy.py', sargv)
     score = load_json(txt)
     if err or score is None: return {'error': '評分失敗：' + (err or txt[:300])}
     open(os.path.join(out, 'score.json'), 'w', encoding='utf-8').write(txt)

@@ -84,6 +84,7 @@ caveats = []
 if S.get('closeness_inputs', {}).get('span_days', 0) < 56: caveats.append('資料不足 8 週，走勢與落點只供參考')
 if S.get('structured_chat', {}).get('flag'): caveats.append('疑似結構化對話（輪流發問等），互動量由規則帶動')
 if S.get('top2_days_share', 0) > 0.6: caveats.append('訊息集中在少數幾天，近期水位不代表日常')
+for c in ((SC.get('context') or {}).get('forecast_caveats') or []): caveats.append(c)
 out['evidence_strength'] = '弱' if caveats else '一般'
 out['caveats'] = caveats
 out['scenario_note'] += ' 研究也顯示，用聊天內容預測關係走向的證據有限（例如以承諾程度為主的模型，分手預測的平衡準確率僅約六成），請把這裡當成討論材料，不是預測。'
