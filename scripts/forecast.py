@@ -16,9 +16,94 @@ if S.get('is_group') or 'error' in S or not SC.get('dimensions'):
 _, wk_n = lt.weekly_counts(rows)
 y = [math.log1p(v) for v in wk_n]; n = len(y)
 H = 8
-out = {'weeks_observed': int(n), 'horizon_weeks': H}
+out = {'weeks_observed': int(n), 'horizon_weeks': H, 'mode': 'standard'}
+
+# ---- 早期模式：曖昧期很容易在一兩週內涼掉，8 週太長；只看最近 7 天 vs 前 7 天，加上 7 天的量能推估 ----
+import datetime as _dt
+CTXO = SC.get('context') or {}
+EARLY_MET = {'online_blind_date', 'street', 'matchmaking', 'family', 'friend', 'new'}
+early_ctx = CTXO.get('met') in EARLY_MET or str(CTXO.get('stage') or '').startswith('not_met')
+def early_block():
+    ds = sorted({r['ts'].date() for r in rows}); first, last = ds[0], ds[-1]; span = (last - first).days + 1
+    if span < 10 or len(ds) < 7: return None
+    win = min(7, span // 2)
+    r0 = last - _dt.timedelta(days=win - 1); p0 = r0 - _dt.timedelta(days=win)
+    rec = [r for r in rows if r['ts'].date() >= r0]; pri = [r for r in rows if p0 <= r['ts'].date() < r0]
+    day = lambda xs: len({r['ts'].date() for r in xs})
+    med = lambda v: lt.median(v) if v else None
+    def lat(xs): return [r['reply_latency_min'] for r in xs if r['reply_latency_min'] is not None]
+    def starters(xs):
+        seen, c = set(), {}
+        for r in xs:
+            if r['session_id'] in seen: continue
+            seen.add(r['session_id']); c[r['who']] = c.get(r['who'], 0) + 1
+        return c
+    sig = []
+    def add(name, kind, recent, prior, call, note=''): sig.append({'name': name, 'kind': kind, 'recent': recent, 'prior': prior, 'call': call, 'note': note})
+    # 1 訊息量
+    a, b = len(rec) / win, len(pri) / win
+    add('每日訊息量', '行為', round(a, 1), round(b, 1), '降溫' if a < .5 * b else '升溫' if a > 1.5 * b else '持平')
+    # 2 有聊天的天數
+    a, b = day(rec) / win, day(pri) / win
+    add('有聊天的天數比例', '行為', round(a, 2), round(b, 2), '降溫' if b > 0 and a < .6 * b else '升溫' if b > 0 and a > 1.4 * b else '持平')
+    # 3 回覆速度（分鐘中位數）
+    lr, lp = lat(rec), lat(pri)
+    if S.get('reply_latency_reliable', True) and len(lr) >= 8 and len(lp) >= 8:
+        a, b = med(lr), med(lp)
+        add('回覆速度（中位數，分鐘）', '行為', round(a, 1), round(b, 1), '降溫' if a - b >= 15 and a > 2 * b else '升溫' if b - a >= 15 and a < .5 * b else '持平')
+    else: add('回覆速度（中位數，分鐘）', '行為', None, None, '資料不足', '回覆樣本不足或不可採用')
+    # 4 誰在開話題
+    sr, sp = starters(rec), starters(pri); nr = sum(sr.values())
+    if nr >= 4:
+        top = max(sr.values()) / nr; topp = (max(sp.values()) / sum(sp.values())) if sp else None
+        add('開話題是否一面倒（最多的人占比）', '行為', round(top, 2), round(topp, 2) if topp is not None else None, '降溫' if top >= .85 else '升溫' if top <= .65 else '持平', '一方獨撐的話，另一方可能只是被動回應')
+    else: add('開話題是否一面倒（最多的人占比）', '行為', None, None, '資料不足', '最近開話題次數少於 4')
+    # 5 訊息長度（逐人，取下降最多的人）
+    worst = None
+    for who in S['people']:
+        cr = [r['n_chars'] for r in rec if r['who'] == who and r['kind'] == 'text']; cp = [r['n_chars'] for r in pri if r['who'] == who and r['kind'] == 'text']
+        if len(cr) >= 8 and len(cp) >= 8 and med(cp) > 0:
+            ratio = med(cr) / med(cp)
+            if worst is None or ratio < worst[0]: worst = (ratio, who, med(cr), med(cp))
+    if worst: add('訊息長度（變短最多的人）', '行為', worst[2], worst[3], '降溫' if worst[0] < .6 else '升溫' if worst[0] > 1.3 else '持平', f'指「{worst[1]}」')
+    else: add('訊息長度（變短最多的人）', '行為', None, None, '資料不足', '文字訊息太少')
+    # 6 晚安
+    gr, gp = sum(r.get('goodnight', 0) for r in rec), sum(r.get('goodnight', 0) for r in pri)
+    add('互道晚安次數', '內容', gr, gp, '降溫' if gp >= 2 and gr == 0 else '升溫' if gr >= 2 and gr > gp else '持平')
+    # 7 邀約與延後（關鍵字比對）
+    ir, dr = sum(r.get('invite', 0) for r in rec), sum(r.get('defer', 0) for r in rec)
+    ip, dp = sum(r.get('invite', 0) for r in pri), sum(r.get('defer', 0) for r in pri)
+    add('邀約／延後婉拒用語（最近）', '內容', f'邀約 {ir}・延後 {dr}', f'邀約 {ip}・延後 {dp}', '降溫' if dr >= 2 and dr > ir else '升溫' if ir >= 1 and dr == 0 else '持平', '關鍵字比對，請對照證據片段自己讀')
+    valid = [x for x in sig if x['call'] != '資料不足']
+    cool = sum(1 for x in valid if x['call'] == '降溫'); warm = sum(1 for x in valid if x['call'] == '升溫'); net = cool - warm
+    label = '資料不足以判斷' if len(valid) < 4 else '高' if net >= 3 else '中' if net >= 1 else '低'
+    # 7 天量能推估：最近 14 天（不足則全部）每日訊息量，衰減趨勢 + 殘差重抽樣
+    dc = {}
+    for r in rows: dc[r['ts'].date()] = dc.get(r['ts'].date(), 0) + 1
+    k_ = min(14, span); series = [dc.get(last - _dt.timedelta(days=k_ - 1 - i), 0) for i in range(k_)]
+    yy_ = [math.log1p(v) for v in series]; b_, a_ = lt.polyfit1(list(range(k_)), yy_); res_ = [v - (a_ + b_ * i) for i, v in enumerate(yy_)]
+    recent_mean = lt.mean(series[-7:]); fades = 0; R = 600; fut = []
+    for _ in range(R):
+        lvl = lt.mean(yy_[-3:]); sl = b_; row_ = []
+        for h in range(7):
+            sl *= .8; lvl += sl; row_.append(math.expm1(max(0.0, lvl + nrng.choice(res_))))
+        fut.append(row_); fades += lt.mean(row_) < .3 * max(recent_mean, 1)
+    fade7 = fades / R; fm = [lt.mean(p) for p in fut]
+    bump = ''
+    if fade7 >= .5 and label in ('低', '中'): label = {'低': '中', '中': '高'}[label]; bump = '（量能推估偏低，已上調一級）'
+    cav = [f'樣本很小：最近 {win} 天 {len(rec)} 則、前 {win} 天 {len(pri)} 則，只能看到短期變化', '降溫訊號越多越值得注意，單一訊號（例如剛好考試週）不要過度解讀',
+           '訊號門檻是經驗設定，沒有用台灣資料校準；邀約／延後是關鍵字比對，請對照證據片段']
+    cav += list(CTXO.get('forecast_caveats') or [])
+    return {'window_days': win, 'span_days': span, 'risk_label': label + bump if label != '資料不足以判斷' else label, 'cool_signals': cool, 'warm_signals': warm, 'signals': sig,
+            'projection': {'horizon_days': 7, 'recent_7d_msgs_per_day': round(recent_mean, 1), 'next_7d_msgs_per_day': {'p10': round(lt.percentile(fm, 10), 1), 'p50': round(lt.percentile(fm, 50), 1), 'p90': round(lt.percentile(fm, 90), 1)}, 'fade_risk_7d': round(fade7, 3)},
+            'caveats': cav, 'rule': '降溫訊號數減升溫訊號數：≥3 高、≥1 中、其餘低；有效訊號少於 4 個則不判斷；7 天量能推估淡出機率 ≥50% 時上調一級。'}
+EB = early_block() if (n < 8 or early_ctx) else None
 if n < 8:
-    print(json.dumps({'error': 'need_8_weeks', 'weeks': int(n)}, ensure_ascii=False)); sys.exit()
+    if EB is None:
+        print(json.dumps({'error': 'need_more_data', 'weeks': int(n)}, ensure_ascii=False)); sys.exit()
+    out.update({'mode': 'early', 'early': EB, 'evidence_strength': '弱', 'caveats': EB['caveats']})
+    print(json.dumps(out, ensure_ascii=False, indent=1)); sys.exit()
+if EB: out['early'] = EB
 
 # ---- 1. 未來訊息量：近 k 週線性趨勢 + 衰減（damped）+ 殘差重抽樣 ----
 k = min(12, n); x = list(range(k)); yy = y[-k:]

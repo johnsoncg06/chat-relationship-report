@@ -81,11 +81,12 @@ def pipeline(p):
         fc = load_json(txt)
         if err or fc is None: notes.append('預測失敗：' + (err.strip().splitlines()[-1] if err else txt[:200])); fc = None
         elif 'error' in fc:
-            notes.append('未做預測：' + ('需要至少 8 週的資料' if fc['error'] == 'need_8_weeks' else '只適用二人聊天')); fc = None
+            notes.append('未做預測：' + ('資料太短（早期判斷至少需要 10 天、7 個有聊天的日子；完整 8 週預測需要至少 8 週）' if fc['error'] in ('need_8_weeks', 'need_more_data') else '只適用二人聊天')); fc = None
         else:
             fp = os.path.join(out, 'forecast.json'); open(fp, 'w', encoding='utf-8').write(txt)
-            _, err = run_script('chat_dashboard.py', [csv_p, st_p, sc_p, fp, chart_dir])
-            if err: notes.append('總覽圖失敗：' + err.strip().splitlines()[-1])
+            if fc.get('scenarios'):   # 早期模式沒有 8 週情境，不畫總覽圖
+                _, err = run_script('chat_dashboard.py', [csv_p, st_p, sc_p, fp, chart_dir])
+                if err: notes.append('總覽圖失敗：' + err.strip().splitlines()[-1])
     imgs = sorted(os.path.basename(f) for f in glob.glob(os.path.join(chart_dir, '*.svg')))
     return {'stats': stats, 'score': score, 'forecast': fc, 'images': imgs, 'notes': notes}
 

@@ -72,6 +72,8 @@ ul.adv{margin:0;padding:0;list-style:none}ul.adv li{background:var(--raise);bord
 @media(max-width:760px){body{flex-direction:column-reverse}aside{width:auto;flex-direction:row;margin:0 8px 8px;padding:6px;border-radius:10px;overflow-x:auto}.brand,.priv,.sp,.quit span{display:none}nav{flex-direction:row}nav button span{display:none}.hero{flex-direction:column;align-items:flex-start;padding:28px 20px 20px}.body{padding:16px 20px 40px}}
 .hist td,.hist th{padding:8px 10px;font-size:13px;white-space:nowrap}.hist tr.row td:first-child{width:auto;color:inherit}.hist td:nth-child(6){white-space:normal}.hist select,.hist input.lb2{background:var(--raise);color:#fff;border:1px solid #333;border-radius:6px;padding:4px 6px;font:inherit;width:auto}.mini{background:var(--raise);border:1px solid #333;border-radius:500px;padding:5px 14px;font-size:12.5px;font-weight:700}.mini:hover{border-color:#fff}.mini.del:hover{border-color:var(--bad);color:var(--bad)}.up{color:var(--g)}.dn{color:var(--bad)}.grp{background:var(--raise);border-radius:10px;padding:16px 18px;margin:14px 0}details.ev{border:1px solid var(--line,#2a2a2a);border-radius:8px;padding:8px 12px;margin:6px 0}details.ev summary{cursor:pointer}.evl{font-size:13px;color:var(--sub,#b3b3b3);padding:4px 0;border-top:1px solid rgba(255,255,255,.06)}.evchip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;border:1px solid var(--line,#ccc)}.ev-ea{background:#e6f0ff}.ev-w{background:#f3ecff}.ev-u{background:#f2f2f2;color:#666}.ev-tw{background:#e3f6e8}
 select{width:100%;background:var(--raise);border:1px solid transparent;border-radius:6px;padding:11px 12px;color:#fff;font:inherit}select:hover{border-color:#444}select:focus{outline:none;border-color:var(--g)}p.sub b{font-size:inherit;color:#fff}
+.c-cool{background:#3a1c20;color:#ffc4ca}.c-warm{background:#143222;color:#9ef0b8}.c-flat{background:#262626;color:#aaa}.c-na{background:#262626;color:#777}
+.tbl tr.row td:first-child{width:auto;color:inherit}.tbl td,.tbl th{text-align:left;padding:8px 10px;font-size:13.5px;vertical-align:top}
 </style></head>
 <body>
 <aside>
@@ -90,7 +92,7 @@ select{width:100%;background:var(--raise);border:1px solid transparent;border-ra
 </aside>
 <main id="main">
  <section class="view on" id="v-start">
-  <div class="hero plain"><div><h1>看懂你們的聊天</h1><div class="meta">匯入 LINE 或 Instagram 的聊天記錄，算出親密度、關係區間和未來 8 週的走向。</div></div></div>
+  <div class="hero plain"><div><h1>看懂你們的聊天</h1><div class="meta">匯入 LINE 或 Instagram 的聊天記錄，算出親密度、關係區間，以及未來 1 週（早期）或 8 週的走向。</div></div></div>
   <div class="body">
    <h2>匯入聊天記錄</h2>
    <div class="drop" id="drop"><b>拖曳檔案到這裡，或點擊選擇</b>LINE：.txt　Instagram：message_1.json 等（可多選，兩個平台可合併）<input id="file" type="file" multiple hidden></div>
@@ -140,6 +142,14 @@ $('go').onclick=async()=>{$('go').disabled=true;$('status').innerHTML='<span cla
  let d;try{const r=await api('/run',{method:'POST',body:JSON.stringify(body)});d=await r.json()}catch(e){d={error:'連不到程式，請重新開啟 App。'}}
  $('go').disabled=false;$('status').textContent='';render(d);if(d.saved_run){$('status').textContent='已存入歷史紀錄';loadStore()}};
 function bar(v,lo,hi){return '<div class="track"><i style="width:'+v+'%"></i>'+(lo!=null?'<em style="left:'+lo+'%;width:'+Math.max(1,hi-lo)+'%"></em>':'')+'</div>'}
+function earlyHtml(e){
+ const CL={'降溫':'c-cool','升溫':'c-warm','持平':'c-flat','資料不足':'c-na'},rk=e.risk_label||'',pj=e.projection||{},nx=pj.next_7d_msgs_per_day||{};
+ let h='<h2>早期判斷：未來 1 週會不會涼掉？</h2><p class="sub">曖昧期變化很快，所以只比較最近 '+e.window_days+' 天和前 '+e.window_days+' 天，不需要等 8 週。這是啟發式判斷，不是預言。</p>';
+ h+='<div class="cards"><div class="card"><b>'+esc(rk)+'</b><span>涼掉風險<br>降溫 '+e.cool_signals+'・升溫 '+e.warm_signals+'</span></div>';
+ h+='<div class="card"><b>'+pj.recent_7d_msgs_per_day+'</b><span>最近 7 天每日訊息</span></div><div class="card"><b>'+nx.p50+'</b><span>未來 7 天每日訊息<br>('+nx.p10+'–'+nx.p90+')</span></div><div class="card"><b>'+Math.round(100*pj.fade_risk_7d)+'%</b><span>再掉到最近水位 3 成以下的機率</span></div></div>';
+ h+='<table class="tbl"><tr><th>訊號</th><th>類型</th><th>最近</th><th>先前</th><th>判讀</th></tr>'+(e.signals||[]).map(x=>'<tr class="row"><td>'+esc(x.name)+(x.note?'<br><small style="opacity:.6">'+esc(x.note)+'</small>':'')+'</td><td>'+esc(x.kind)+'</td><td>'+(x.recent??'—')+'</td><td>'+(x.prior??'—')+'</td><td><span class="evchip '+(CL[x.call]||'c-flat')+'">'+esc(x.call)+'</span></td></tr>').join('')+'</table>';
+ h+='<div class="alert"><h3>判斷依據與限制</h3>'+(e.caveats||[]).map(w=>'<div>'+esc(w)+'</div>').join('')+'<div style="opacity:.7">'+esc(e.rule||'')+'</div></div>';
+ return h}
 function bandShown(s){const c=s.context;return(c&&/^not_met/.test(c.stage||'')&&s.band.indexOf('情侶／伴侶')===0)?s.band.replace('情侶／伴侶','互動熱絡・尚未見面（不等於交往）'):s.band}
 function render(d){
  if(d.error){$('status').innerHTML='<span style="color:var(--bad)">'+esc(d.error)+'</span>';return}
@@ -153,7 +163,7 @@ function render(d){
  h+='<h2>關鍵數字</h2><div class="cards"><div class="card"><b>'+s.closeness+'</b><span>親密度</span></div><div class="card"><b>'+s.romantic_signal+'</b><span>浪漫訊號</span></div><div class="card"><b>'+esc(s.romantic_direction||'—')+'</b><span>情感詞方向</span></div><div class="card"><b>'+st.total+'</b><span>訊息數</span></div><div class="card"><b>'+st.closeness_inputs.active_days+'</b><span>有聊天的天數</span></div></div>';
  if(s.dimensions)h+='<h2>五個維度</h2>'+Object.entries(s.dimensions).map(([k,v])=>'<div class="dim"><span>'+esc(k)+'</span>'+bar(v)+'<b>'+v+'</b></div>').join('');
  if(s.weights){const EV={'東亞參考':'ev-ea','西方參考（實驗性）':'ev-w','未驗證':'ev-u','台灣驗證':'ev-tw'};
-  h+='<h2>評分依據</h2><p class="sub">權重設定「'+esc(s.profile||'')+'」。目前沒有任何指標經台灣聊天紀錄加關係結果驗證；「東亞參考」只代表台、日、港的問卷或實驗支持這個方向。</p><table><tr><th>指標</th><th>權重</th><th>分數</th><th>證據等級</th></tr>'+Object.entries(s.weights).map(([k,w])=>'<tr class="row"><td>'+esc(k)+'</td><td>'+w+'</td><td>'+((s.sub_closeness||{})[k]??'')+'</td><td><span class="evchip '+(EV[(s.evidence_levels||{})[k]]||'ev-u')+'">'+esc((s.evidence_levels||{})[k]||'未驗證')+'</span></td></tr>').join('')+'</table>'+
+  h+='<h2>評分依據</h2><p class="sub">權重設定「'+esc(s.profile||'')+'」。目前沒有任何指標經台灣聊天紀錄加關係結果驗證；「東亞參考」只代表台、日、港的問卷或實驗支持這個方向。</p><table class="tbl"><tr><th>指標</th><th>權重</th><th>分數</th><th>證據等級</th></tr>'+Object.entries(s.weights).map(([k,w])=>'<tr class="row"><td>'+esc(k)+'</td><td>'+w+'</td><td>'+((s.sub_closeness||{})[k]??'')+'</td><td><span class="evchip '+(EV[(s.evidence_levels||{})[k]]||'ev-u')+'">'+esc((s.evidence_levels||{})[k]||'未驗證')+'</span></td></tr>').join('')+'</table>'+
   (s.closeness_by_profile?'<p class="note">同一份資料在不同權重下的親密度：'+Object.entries(s.closeness_by_profile).map(([k,v])=>esc(k)+' '+v).join('　')+'。差距小表示結論不依賴這次的權重調整。</p>':'')}
  const ini=st.initiations,tot=Object.values(ini).reduce((a,b)=>a+b,0)||1;
  h+='<h2>誰先開話題</h2>'+Object.keys(st.people).map(k=>{const v=ini[k]||0;return '<div class="dim"><span>'+esc(k)+'</span>'+bar(Math.round(100*v/tot))+'<b>'+Math.round(100*v/tot)+'%</b></div>'}).join('')+'<p class="note">以靜默 6 小時作為新話題的門檻；只描述行為，不代表誰比較在乎。</p>';
@@ -167,13 +177,14 @@ function render(d){
  if(ev&&Object.keys(ev).length)h+='<h2>證據：原文片段</h2><p class="sub">結論不要只信分數，自己看看這幾則。資料只留在這台電腦。</p>'+Object.entries(ev).map(([k,v])=>'<details class="ev"><summary>'+esc(k)+'</summary>'+v.map(x=>'<div class="evl">'+esc(x)+'</div>').join('')+'</details>').join('');
  h+='</div>';
  $('v-over').innerHTML=h;
- let g='<div class="hero plain"><div><h1>未來 8 週</h1><div class="meta">依目前資料推估的關係落點與建議</div></div></div><div class="body">';
- if(f){const sc=f.scenarios,ks=Object.keys(sc).sort((a,b)=>sc[b].point-sc[a].point);
+ const early1=f&&f.mode==='early';let g='<div class="hero plain"><div><h1>'+(early1?'未來 1 週':'未來 8 週')+'</h1><div class="meta">'+(early1?'資料還短，只做早期判斷（最近 vs 前一週），不做 8 週落點':'依目前資料推估的關係落點與建議')+'</div></div></div><div class="body">';
+ if(f&&f.early)g+=earlyHtml(f.early);
+ if(f&&f.scenarios){const sc=f.scenarios,ks=Object.keys(sc).sort((a,b)=>sc[b].point-sc[a].point);
   g+='<h2>關係落點排行</h2><p class="sub">相對可能性，由高到低；淡色範圍是 10–90% 區間。這是手設權重的啟發式分數，不是真實機率。</p><table><tr><th>#</th><th>落點</th><th></th><th>可能性</th></tr>'+ks.map((k,i)=>'<tr class="row'+(i===0?' top':'')+'"><td>'+(i+1)+'</td><td>'+esc(k)+(k===f.current_band_scenario?'<span class="cur">目前所在</span>':'')+'</td><td style="width:34%">'+bar(sc[k].point,sc[k].p10,sc[k].p90)+'</td><td class="pct">'+sc[k].point+'% <small>('+sc[k].p10+'–'+sc[k].p90+')</small></td></tr>').join('')+'</table>';
   if(f.caveats&&f.caveats.length)g+='<div class="alert"><h3>證據強度：'+esc(f.evidence_strength)+'</h3>'+f.caveats.map(w=>'<div>'+esc(w)+'</div>').join('')+'</div>';
   g+='<p class="note">'+esc(f.scenario_note)+'</p><h2>訊息量走向</h2><div class="cards"><div class="card"><b>'+Math.round(f.fade_risk_4wk*100)+'%</b><span>未來 4 週明顯變少的風險</span></div><div class="card"><b>'+f.trend_slope_pct_per_week+'%</b><span>近期每週變化</span></div><div class="card"><b>'+f.recent_4wk_msgs_per_week+'</b><span>近 4 週平均每週則數</span></div></div>';
   if(f.rule_advice&&f.rule_advice.length)g+='<h2>目前建議</h2><ul class="adv">'+f.rule_advice.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul><p class="note">建議只依聊天行為，不代表對方的想法，也不替你做決定。</p>'}
- else g+='<div class="empty"><b>這份資料不做預測</b>'+esc((d.notes||[]).filter(n=>n.startsWith('未做')||n.includes('預測')).join('；')||'只適用於至少 8 週的二人聊天。')+'</div>';
+ else if(!(f&&f.early))g+='<div class="empty"><b>這份資料不做預測</b>'+esc((d.notes||[]).filter(n=>n.startsWith('未做')||n.includes('預測')).join('；')||'早期判斷需要至少 10 天、7 個有聊天的日子；完整 8 週預測需要至少 8 週。（二人聊天）')+'</div>';
  g+='</div>';$('v-fore').innerHTML=g;
  $('v-chart').innerHTML='<div class="hero plain"><div><h1>圖表</h1><div class="meta">點擊圖片放大</div></div></div><div class="body">'+(d.images.length?'<div class="imgs">'+d.images.map(i=>'<figure><img loading="lazy" src="'+(d.run_id?'/runimg/'+d.run_id+'/':'/img/')+i+'?t='+T+'" alt="'+esc(i)+'"></figure>').join('')+'</div>':'<div class="empty"><b>沒有圖表</b>圖表產生失敗，請看總覽的警告。</div>')+'</div>';
  $('v-exp').innerHTML='<div class="hero plain"><div><h1>匯出</h1><div class="meta">把結果帶走，或貼給 Claude 寫成完整的敘事報告</div></div></div><div class="body"><div class="play"><button class="go" onclick="location.href=\'/download.zip?t='+T+'\'">下載全部結果</button></div><p class="note">壓縮檔內有 stats、score、forecast 三份 JSON、逐則明細 CSV 和所有圖表。CSV 不含聊天文字內容；stats 與 score 內有少量證據原文，分享前請先檢查。</p><h2>限制</h2><p class="sub">只看文字；門檻是經驗設定，沒有用大樣本校準；機率是啟發式分數；電話與見面看不到；文字看不出性別與血緣，兄弟、姊妹、閨蜜統稱「摯友」，家人關係需本人確認。</p></div>';

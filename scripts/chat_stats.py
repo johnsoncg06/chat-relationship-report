@@ -33,6 +33,9 @@ LEX = {
  'laugh': r'哈哈|XD|www|笑死|好笑|笑爛|笑爆|笑到|😂|🤣',   # 不含 lol：常指 League of Legends
  'pet_name': r'寶貝|寶寶|親愛的|老公|老婆|\bbb\b|babe|honey|甜心',
  'heart': r'❤|💕|💖|😘|🥰|💗|😍',
+ # 早期模式用的內容訊號：純關鍵字比對、沒有驗證，只當線索；請對照證據片段自己讀
+ 'invite': r'見面|見個面|約你|約妳|約個|出來(吃|玩|走|喝)|一起(吃|去|看|逛|喝|散步)|有空嗎|要不要(一起|出來)',
+ 'defer': r'改天|再說|下次再|之後再|晚點再|最近(比較|很)忙|沒(什麼)?空|不太方便|再看看|再約|忙完',
 }
 NEG = re.compile(r'(不|沒|別|才不|不會|不要|不想)\s*$')
 
@@ -357,6 +360,8 @@ def main():
     if sess_starts: ev['開話題（對話段開頭）'] = [f"{m['t']:%Y-%m-%d %H:%M} {m['who']}：{m['text'][:50]}" for m in sess_starts[:4]]
     pick('深夜（00–05 點）互動', lambda m: m['t'].hour < 5, 3)
     pick('我們（we-talk）', lambda m: bool(re.search(r'我們|咱們|我倆', m['text'])), 3)
+    pick('邀約（見面、一起做什麼）', lambda m: bool(re.search(LEX['invite'], m['text'])), 4)
+    pick('延後／婉拒（改天、再說、最近忙）', lambda m: bool(re.search(LEX['defer'], m['text'])), 4)
     pick('表達想念／喜歡', lambda m: bool(re.search(LEX['miss_you'] + '|' + LEX['love_you'], m['text'])), 3)
     out['evidence'] = ev
     dc = Counter(m['t'].date() for m in M); top2 = sum(c for _, c in dc.most_common(2)) / len(M)

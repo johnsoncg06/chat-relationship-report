@@ -217,7 +217,7 @@ def backtest():
     pts = []   # 每個「預測週」一筆
     for i, A in enumerate(metas):
         fc = A.get('_fc')
-        if not fc or not A.get('weekly') or A['is_group']: continue
+        if not fc or 'forecast_msgs_per_week' not in fc or not A.get('weekly') or A['is_group']: continue   # 早期模式的預測沒有每週量
         weeks = sorted(A['weekly']); last = dt.date.fromisoformat(weeks[-1]); fcw = fc['forecast_msgs_per_week']
         recent = fc.get('recent_4wk_msgs_per_week')
         for B in metas[i + 1:]:
@@ -242,7 +242,7 @@ def backtest():
     sc = []
     for i, A in enumerate(metas):
         fc = A.get('_fc')
-        if not fc: continue
+        if not fc or 'scenarios' not in fc: continue
         for B in metas[i + 1:]:
             if B['key'] != A['key'] or not B.get('actual_status'): continue
             gap = (dt.datetime.fromisoformat(B['saved_at']) - dt.datetime.fromisoformat(A['saved_at'])).days

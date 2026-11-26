@@ -35,6 +35,23 @@ cx = sc.get('context'); assert cx and cx['met'] == 'online_blind_date' and len(c
 assert d['forecast'].get('caveats') and any('剛失戀' in c for c in d['forecast']['caveats']), d['forecast'].get('caveats')
 assert d.get('forecast') and d['forecast'].get('scenarios'), 'forecast missing: ' + str(d.get('notes'))
 assert len(d['images']) >= 5, d['images']
+# --- 早期模式：16 天、後 7 天明顯變冷的合成聊天，要有 early 區塊且判斷為「高」---
+E = ['[LINE] 與測試的聊天記錄', '儲存日期： 2026/11/26 10:24', '']
+random.seed(11)
+for ed in range(16):
+    E.append(f'2026/11/{ed + 1:02d}（四）')
+    cool = ed >= 9; n = random.randint(4, 8) if cool else random.randint(30, 45); t = 9 * 60
+    for i in range(n):
+        t += random.randint(40, 180) if cool else random.randint(1, 6); h, m = divmod(t, 60)
+        who = '小明' if (i % 5 != 4 if cool else i % 2 == 0) else '小華'
+        E.append(f'{h % 24:02d}:{m:02d}\t{who}\t' + (random.choice(['嗯', '好', '改天再說', '最近比較忙']) if cool else random.choice(['你在幹嘛', '哈哈哈', '吃飯了嗎', '晚安', '我們去吃那間'])))
+    E.append('')
+call('/reset', b''); call('/upload?name=early.txt', '\n'.join(E).encode('utf-8'))
+de = json.loads(call('/run', json.dumps({'tz': '8', 'ctx': {'met': 'new'}}).encode()))
+assert not de.get('error'), de
+fe = de.get('forecast'); assert fe and fe.get('mode') == 'early' and fe.get('early'), 'early mode missing: ' + str(de.get('notes'))
+assert fe['early']['risk_label'].startswith('高'), fe['early']['risk_label']
+assert len(fe['early']['signals']) >= 6 and not fe.get('scenarios')
 # --- 歷史紀錄：選資料夾 → 再分析一次（自動存檔）→ 列表 / 載入 / 比對 / 回測 / 刪除 ---
 import tempfile, os
 def jcall(path, obj=None):
