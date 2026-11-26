@@ -2,6 +2,8 @@
 """打包後的煙霧測試：對執行中的 App 上傳一份合成 LINE 聊天，跑完整流程，檢查主要欄位。
 用法: python tests/smoke.py <port> <token>   （失敗時以非零結束碼退出，讓 CI 擋下發布）"""
 import sys, json, time, random, urllib.request, urllib.parse
+try: sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception: pass
 port, tok = sys.argv[1], sys.argv[2]
 B = f'http://127.0.0.1:{port}'
 def call(path, data=None):
@@ -27,4 +29,4 @@ assert d['score'].get('experimental') is not None
 assert d.get('forecast') and d['forecast'].get('scenarios'), 'forecast missing: ' + str(d.get('notes'))
 assert len(d['images']) >= 5, d['images']
 call('/quit', b'')
-print('SMOKE OK', d['score']['closeness'], d['score']['band'])
+print('SMOKE OK closeness=%s' % d['score']['closeness'])

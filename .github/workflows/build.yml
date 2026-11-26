@@ -35,6 +35,7 @@ jobs:
   windows:
     needs: version
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -46,8 +47,8 @@ jobs:
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         shell: bash
         run: |
-          CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe &
-          python tests/smoke.py 8799 smoke
+          CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport/ChatRelationshipReport.exe > app.log 2>&1 &
+          python tests/smoke.py 8799 smoke || { echo '--- app.log ---'; cat app.log; exit 1; }
       - name: Inno Setup installer
         shell: bash
         run: |
@@ -76,6 +77,7 @@ jobs:
           - { runner: macos-latest,   arch: arm64 }   # Apple Silicon（M1 以後）
           - { runner: macos-15-intel, arch: intel }   # Intel Mac；失敗不擋發布，但該版本會缺檔
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     continue-on-error: ${{ matrix.arch == 'intel' }}
     steps:
       - uses: actions/checkout@v5
@@ -86,8 +88,8 @@ jobs:
         run: pyinstaller $PYI_COMMON --onedir --osx-bundle-identifier io.github.johnsoncg06.chatrelationshipreport --add-data "scripts:scripts" --add-data "web:web" app.py
       - name: 自我檢查（開啟 App、上傳合成聊天、跑完整流程）
         run: |
-          CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport &
-          python tests/smoke.py 8799 smoke
+          CHATREL_TOKEN=smoke NO_BROWSER=1 PORT=8799 ./dist/ChatRelationshipReport.app/Contents/MacOS/ChatRelationshipReport > app.log 2>&1 &
+          python tests/smoke.py 8799 smoke || { echo '--- app.log ---'; cat app.log; exit 1; }
       - name: Build .dmg
         run: |
           mkdir dmgroot && cp -R dist/ChatRelationshipReport.app dmgroot/ && ln -s /Applications dmgroot/Applications
